@@ -1,6 +1,3 @@
-/* Layout: quiet header + short intro, then two floating cards (input | verdict), stacked on phones.
-   Borders only where they carry meaning; depth comes from soft shadows and filled fields.
-   Risk is always colour + icon shape + word. 18px base text, 48px+ targets. */
 :root {
   --paper: #F4F6F6;
   --surface: #FFFFFF;
@@ -172,16 +169,61 @@ textarea { min-height: 14rem; resize: vertical; line-height: 1.5; }
 .verdict .kicker { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; }
 .verdict h2 { font-size: 1.75rem; margin-top: 4px; }
 .verdict .sub { margin-top: 8px; color: var(--ink); }
-.lv-High   .verdict { background: var(--high-bg); } .lv-High   .tone { color: var(--high); }
-.lv-Medium .verdict { background: var(--med-bg); }  .lv-Medium .tone { color: var(--med); }
-.lv-Low    .verdict { background: var(--low-bg); }  .lv-Low    .tone { color: var(--low); }
+/* Keep the heading area the SAME surface colour as the input and result cards.
+   The border/glow now communicates risk rather than a solid colour block. */
+.lv-High .verdict, .lv-Medium .verdict, .lv-Low .verdict {
+  background: var(--surface);
+}
+.lv-High   .tone { color: var(--high); }
+.lv-Medium .tone { color: var(--med); }
+.lv-Low    .tone { color: var(--low); }
+
+/* Outline and glow the entire result card according to its category. */
+.result.lv-High {
+  border: 2px solid var(--risk-red);
+  box-shadow: 0 0 0 1px rgb(255 79 94 / .16), 0 0 28px rgb(255 79 94 / .27);
+}
+.result.lv-Medium {
+  border: 2px solid var(--risk-orange);
+  box-shadow: 0 0 0 1px rgb(255 150 51 / .14), 0 0 25px rgb(255 150 51 / .22);
+}
+.result.lv-Low {
+  border: 2px solid var(--risk-yellow);
+  box-shadow: 0 0 0 1px rgb(255 216 61 / .12), 0 0 22px rgb(255 216 61 / .17);
+}
 
 /* where this result sits on the three levels */
 .levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .levels div { display: grid; gap: 6px; font-size: 0.75rem; color: var(--ink-2); }
 .levels i { display: block; height: 6px; border-radius: 999px; background: rgb(20 34 40 / .1); }
 .levels .on { color: var(--ink); font-weight: 700; }
-.levels .on.s-Low i { background: var(--low); } .levels .on.s-Medium i { background: var(--med); } .levels .on.s-High i { background: var(--high); }
+/* Bars fill cumulatively: low = yellow, medium = yellow + orange,
+   high = yellow + orange + red. Their colour doesn't depend on theme. */
+.lv-Low .levels .s-Low i,
+.lv-Medium .levels .s-Low i,
+.lv-High .levels .s-Low i {
+  background: var(--risk-yellow);
+  box-shadow: 0 0 9px rgb(255 216 61 / .55);
+  animation: risk-bar-fill .45s ease-out both;
+}
+.lv-Medium .levels .s-Medium i,
+.lv-High .levels .s-Medium i {
+  background: var(--risk-orange);
+  box-shadow: 0 0 9px rgb(255 150 51 / .55);
+  animation: risk-bar-fill .45s ease-out .10s both;
+}
+.lv-High .levels .s-High i {
+  background: var(--risk-red);
+  box-shadow: 0 0 11px rgb(255 79 94 / .7);
+  animation: risk-bar-fill .45s ease-out .20s both;
+}
+.lv-Low .levels .s-Low.on { color: var(--risk-yellow); }
+.lv-Medium .levels .s-Medium.on { color: var(--risk-orange); }
+.lv-High .levels .s-High.on { color: var(--risk-red); }
+@keyframes risk-bar-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
 :root[data-theme="dark"] .levels i { background: rgb(255 255 255 / .12); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .levels i { background: rgb(255 255 255 / .12); } }
 
@@ -242,3 +284,6 @@ footer p { max-width: 75ch; }
 .result.fresh .verdict { animation: rise .35s ease-out; }
 @keyframes rise { from { transform: translateY(6px); opacity: .6; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .spin, .result.fresh .verdict { animation: none; } * { transition: none !important; } }
+
+/* Avoid movement for users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) { .levels i { animation: none !important; } }

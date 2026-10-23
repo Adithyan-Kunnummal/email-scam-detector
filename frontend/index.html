@@ -1,155 +1,558 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Scam Email Checker</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Analyse a suspicious email by pasting its text or uploading a screenshot. See risk indicators and suggested next steps.">
+  <title>Scam Email Checker</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="./style.css">
 </head>
+
 <body>
 
+<!-- SVG Icons -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-high" viewBox="0 0 64 64"><path d="M21 4h22l17 17v22L43 60H21L4 43V21z" fill="currentColor"/><rect x="29" y="15" width="6" height="22" rx="3" fill="var(--surface)"/><circle cx="32" cy="46" r="4" fill="var(--surface)"/></symbol>
-  <symbol id="i-med" viewBox="0 0 64 64"><path d="M32 5 61 57H3z" fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><rect x="29" y="22" width="6" height="18" rx="3" fill="var(--surface)"/><circle cx="32" cy="48" r="4" fill="var(--surface)"/></symbol>
-  <symbol id="i-low" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="currentColor"/><circle cx="32" cy="18" r="4" fill="var(--surface)"/><rect x="29" y="26" width="6" height="22" rx="3" fill="var(--surface)"/></symbol>
-  <symbol id="i-flag" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="currentColor" opacity=".16"/><path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="16.4" r="1.3" fill="currentColor"/></symbol>
-  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
-  <symbol id="i-device" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M4 16 13 7a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L13 19H8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 11l5 5M8 19h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 22 20H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></symbol>
-  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/></symbol>
-  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.8" fill="currentColor"/><path d="m4 18 5-5 4 4 3-3 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
-  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-share" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
-  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+  <symbol id="i-high" viewBox="0 0 64 64">
+    <path d="M21 4h22l17 17v22L43 60H21L4 43V21z" fill="currentColor"/>
+    <rect x="29" y="15" width="6" height="22" rx="3" fill="var(--surface)"/>
+    <circle cx="32" cy="46" r="4" fill="var(--surface)"/>
+  </symbol>
+
+  <symbol id="i-med" viewBox="0 0 64 64">
+    <path d="M32 5 61 57H3z" fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="29" y="22" width="6" height="18" rx="3" fill="var(--surface)"/>
+    <circle cx="32" cy="48" r="4" fill="var(--surface)"/>
+  </symbol>
+
+  <symbol id="i-low" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="currentColor"/>
+    <circle cx="32" cy="18" r="4" fill="var(--surface)"/>
+    <rect x="29" y="26" width="6" height="22" rx="3" fill="var(--surface)"/>
+  </symbol>
+
+  <symbol id="i-flag" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="currentColor" opacity=".16"/>
+    <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="12" cy="16.4" r="1.3" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-lock" viewBox="0 0 24 24">
+    <rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/>
+  </symbol>
+
+  <symbol id="i-device" viewBox="0 0 24 24">
+    <rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-eraser" viewBox="0 0 24 24">
+    <path d="M4 16 13 7a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L13 19H8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M9 11l5 5M8 19h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-warn" viewBox="0 0 24 24">
+    <path d="M12 3 22 20H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="12" cy="17" r="1.2" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-info" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M12 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="12" cy="7.5" r="1.2" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-text" viewBox="0 0 24 24">
+    <path d="M5 7h14M5 12h14M5 17h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-image" viewBox="0 0 24 24">
+    <rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="9" cy="10" r="1.8" fill="currentColor"/>
+    <path d="m4 18 5-5 4 4 3-3 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="i-upload" viewBox="0 0 24 24">
+    <path d="M12 15V4M7 9l5-5 5 5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="i-share" viewBox="0 0 24 24">
+    <rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="2"/>
+  </symbol>
+
+  <symbol id="i-chev" viewBox="0 0 24 24">
+    <path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
 </svg>
+
+
+<!-- ================= HEADER ================= -->
 
 <header class="top">
   <div class="wrap">
+
     <div class="brand">
-      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="var(--accent)"/><path d="M9 12.5h16v10a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 9 22.5z" fill="none" stroke="var(--accent-ink)" stroke-width="2" stroke-linejoin="round"/><path d="m9.5 13 7.5 5.5 7.5-5.5" fill="none" stroke="var(--accent-ink)" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <rect width="34" height="34" rx="10" fill="var(--accent)"/>
+        <path d="M9 12.5h16v10a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 9 22.5z"
+          fill="none" stroke="var(--accent-ink)" stroke-width="2" stroke-linejoin="round"/>
+        <path d="m9.5 13 7.5 5.5 7.5-5.5"
+          fill="none" stroke="var(--accent-ink)" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+
       Scam Email Checker
     </div>
+
     <div class="seg" role="group" aria-label="Text size">
-      <button type="button" id="ts-std" aria-pressed="true">Normal text</button>
-      <button type="button" id="ts-lg" aria-pressed="false">Large text</button>
+      <button type="button" id="ts-std" aria-pressed="true">
+        Normal text
+      </button>
+      <button type="button" id="ts-lg" aria-pressed="false">
+        Large text
+      </button>
     </div>
+
   </div>
 </header>
 
+
+<!-- ================= INTRODUCTION ================= -->
+
 <section class="intro">
   <div class="wrap">
+
     <h1>Not sure about an email? Check it here first.</h1>
-    <p>Paste the email or upload a screenshot. You'll get a clear risk level, the reasons behind it, and what to do next.</p>
+
+    <p>
+      Paste the email or upload a screenshot.
+      You'll get a clear risk level, the reasons behind it,
+      and what to do next.
+    </p>
+
     <ul class="trust">
-      <li><svg width="18" height="18" aria-hidden="true"><use href="#i-lock"/></svg> Nothing is stored</li>
-      <li><svg width="18" height="18" aria-hidden="true"><use href="#i-device"/></svg> Screenshots stay on your device</li>
-      <li><svg width="18" height="18" aria-hidden="true"><use href="#i-eraser"/></svg> Remove names and account numbers first</li>
+
+      <li>
+        <svg width="18" height="18" aria-hidden="true">
+          <use href="#i-lock"/>
+        </svg>
+        Email text is not stored by this page
+      </li>
+
+      <li>
+        <svg width="18" height="18" aria-hidden="true">
+          <use href="#i-device"/>
+        </svg>
+        Screenshot text is read on your device
+      </li>
+
+      <li>
+        <svg width="18" height="18" aria-hidden="true">
+          <use href="#i-eraser"/>
+        </svg>
+        Remove names and account numbers first
+      </li>
+
     </ul>
+
   </div>
 </section>
+
+
+<!-- ================= MAIN WEBSITE ================= -->
 
 <main>
   <div class="wrap">
 
-    <!-- ===== INPUT ===== -->
+
+    <!-- ================= EMAIL INPUT CARD ================= -->
+
     <section class="card" aria-label="Check an email">
+
       <form id="form" class="form" novalidate>
-        <div class="seg modes" role="tablist" aria-label="How do you want to add the email?">
-          <button type="button" role="tab" id="tab-paste" aria-selected="true" aria-controls="pane-paste">
-            <svg width="20" height="20" aria-hidden="true"><use href="#i-text"/></svg> Paste text
+
+        <!-- Input Mode Tabs -->
+
+        <div class="seg modes"
+             role="tablist"
+             aria-label="How do you want to add the email?">
+
+          <button
+            type="button"
+            role="tab"
+            id="tab-paste"
+            aria-selected="true"
+            aria-controls="pane-paste">
+
+            <svg width="20" height="20" aria-hidden="true">
+              <use href="#i-text"/>
+            </svg>
+
+            Paste text
           </button>
-          <button type="button" role="tab" id="tab-shot" aria-selected="false" aria-controls="pane-shot" tabindex="-1">
-            <svg width="20" height="20" aria-hidden="true"><use href="#i-image"/></svg> Screenshot
+
+          <button
+            type="button"
+            role="tab"
+            id="tab-shot"
+            aria-selected="false"
+            aria-controls="pane-shot"
+            tabindex="-1">
+
+            <svg width="20" height="20" aria-hidden="true">
+              <use href="#i-image"/>
+            </svg>
+
+            Screenshot
           </button>
+
         </div>
 
-        <!-- screenshot pane: fills the shared email box below -->
-        <div id="pane-shot" role="tabpanel" aria-labelledby="tab-shot" class="form" hidden>
+
+        <!-- ================= SCREENSHOT UPLOAD ================= -->
+
+        <div id="pane-shot"
+             role="tabpanel"
+             aria-labelledby="tab-shot"
+             class="form"
+             hidden>
+
           <label class="drop" id="drop" for="file">
-            <span class="glyph"><svg width="24" height="24" aria-hidden="true"><use href="#i-upload"/></svg></span>
+
+            <span class="glyph">
+              <svg width="24" height="24" aria-hidden="true">
+                <use href="#i-upload"/>
+              </svg>
+            </span>
+
             <strong>Choose a screenshot</strong>
-            <small>or drag it here · PNG or JPG</small>
-            <input type="file" id="file" accept="image/png,image/jpeg" class="sr-only">
+
+            <small>
+              or drag it here · PNG or JPG · max 8 MB
+            </small>
+
+            <input
+              type="file"
+              id="file"
+              accept="image/png,image/jpeg"
+              class="sr-only">
+
           </label>
+
+
+          <!-- Screenshot Advice -->
+
           <ul class="tips">
-            <li><svg width="16" height="16" aria-hidden="true"><use href="#i-info"/></svg><span>Crop to just the email. Screenshots can show other private details.</span></li>
-            <li><svg width="16" height="16" aria-hidden="true"><use href="#i-info"/></svg><span>Screenshots hide the real address behind links, so pasting the text gives a better check.</span></li>
+
+            <li>
+              <svg width="16" height="16" aria-hidden="true">
+                <use href="#i-info"/>
+              </svg>
+              <span>
+                Crop to just the email. Screenshots can show
+                other private details.
+              </span>
+            </li>
+
+            <li>
+              <svg width="16" height="16" aria-hidden="true">
+                <use href="#i-info"/>
+              </svg>
+              <span>
+                Screenshots hide the real address behind links,
+                so pasting the text gives a better check.
+              </span>
+            </li>
+
           </ul>
+
+
+          <!-- OCR Progress -->
+
           <div id="ocr" hidden>
+
             <div class="shot-row">
+
               <img id="thumb" alt="Your screenshot">
+
               <div class="progress">
-                <span id="ocr-msg" aria-live="polite">Reading the text in your screenshot…</span>
-                <div class="bar" aria-hidden="true"><i id="ocr-bar"></i></div>
+
+                <span id="ocr-msg" aria-live="polite">
+                  Reading the text in your screenshot…
+                </span>
+
+                <div class="bar" aria-hidden="true">
+                  <i id="ocr-bar"></i>
+                </div>
+
               </div>
+
             </div>
+
           </div>
-          <div id="ocr-err" class="notice warn" role="alert" hidden>
-            <svg width="20" height="20" aria-hidden="true"><use href="#i-warn"/></svg>
+
+
+          <!-- OCR Error -->
+
+          <div id="ocr-err"
+               class="notice warn"
+               role="alert"
+               hidden>
+
+            <svg width="20" height="20" aria-hidden="true">
+              <use href="#i-warn"/>
+            </svg>
+
             <p id="ocr-err-msg"></p>
+
           </div>
+
         </div>
 
-        <div id="pane-paste" role="tabpanel" aria-labelledby="tab-paste" class="form">
+
+        <!-- ================= EMAIL TEXT INPUT ================= -->
+
+        <div id="pane-paste"
+             role="tabpanel"
+             aria-labelledby="tab-paste"
+             class="form">
+
+          <!-- OCR Success -->
+
           <div id="ocr-ok" class="notice info" hidden>
-            <svg width="20" height="20" aria-hidden="true"><use href="#i-info"/></svg>
-            <p><b>Check the text is right, then press Check.</b> Reading screenshots can make mistakes, so fix any wrong words below.</p>
+
+            <svg width="20" height="20" aria-hidden="true">
+              <use href="#i-info"/>
+            </svg>
+
+            <p>
+              <b>Check the text is right, then press Check.</b>
+              Reading screenshots can make mistakes,
+              so fix any wrong words below.
+            </p>
+
           </div>
+
+
+          <!-- Email Body -->
+
           <div class="field">
+
             <label for="body">Email text</label>
-            <textarea id="body" required aria-describedby="body-err" placeholder="Paste the whole email here, including any links."></textarea>
-            <span id="body-err" class="err" role="alert"></span>
+
+            <textarea
+              id="body"
+              required
+              aria-describedby="body-err"
+              placeholder="Paste the whole email here, including any links."></textarea>
+
+            <span id="body-err"
+                  class="err"
+                  role="alert"></span>
+
           </div>
+
+
+          <!-- Sender and Subject -->
+
           <div class="pair">
+
             <div class="field">
-              <label for="sender">Sender's address <span class="hint">· optional</span></label>
-              <input type="email" id="sender" class="mono" placeholder="name@example.com" autocomplete="off">
+
+              <label for="sender">
+                Sender's address
+                <span class="hint">· optional</span>
+              </label>
+
+              <input
+                type="email"
+                id="sender"
+                class="mono"
+                placeholder="name@example.com"
+                autocomplete="off">
+
             </div>
+
             <div class="field">
-              <label for="subject">Subject <span class="hint">· optional</span></label>
-              <input type="text" id="subject" autocomplete="off">
+
+              <label for="subject">
+                Subject
+                <span class="hint">· optional</span>
+              </label>
+
+              <input
+                type="text"
+                id="subject"
+                autocomplete="off">
+
             </div>
+
           </div>
+
         </div>
+
+
+        <!-- ================= ACTION BUTTONS ================= -->
 
         <div class="check-actions">
-          <button type="submit" class="btn btn-primary" id="check">Check this email</button>
-          <button type="button" class="btn btn-soft" id="clear">Clear</button>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            id="check">
+
+            Check this email
+
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-soft"
+            id="clear">
+
+            Clear
+
+          </button>
+
         </div>
+
+
+        <!-- ================= SAMPLE EMAILS ================= -->
 
         <div class="examples">
+
           <span>Try an example</span>
-          <button type="button" class="chip" data-sample="ato">Tax refund</button>
-          <button type="button" class="chip" data-sample="parcel">Missed parcel</button>
-          <button type="button" class="chip" data-sample="visa">Visa fee</button>
-          <button type="button" class="chip" data-sample="uni">Uni timetable</button>
+
+          <button
+            type="button"
+            class="chip"
+            data-sample="ato">
+
+            Tax refund
+          </button>
+
+          <button
+            type="button"
+            class="chip"
+            data-sample="parcel">
+
+            Missed parcel
+          </button>
+
+          <button
+            type="button"
+            class="chip"
+            data-sample="visa">
+
+            Visa fee
+          </button>
+
+          <button
+            type="button"
+            class="chip"
+            data-sample="uni">
+
+            Uni timetable
+          </button>
+
         </div>
+
       </form>
+
     </section>
 
-    <!-- ===== RESULT ===== -->
-    <section class="card result" id="result" aria-live="polite" aria-labelledby="res-h">
+
+    <!-- ================= RISK RESULT CARD ================= -->
+
+    <section
+      class="card result"
+      id="result"
+      aria-live="polite"
+      aria-labelledby="res-h">
+
       <div class="empty">
-        <svg width="40" height="40" aria-hidden="true"><use href="#i-info"/></svg>
-        <p id="res-h">Your result will appear here.</p>
+
+        <svg width="40" height="40" aria-hidden="true">
+          <use href="#i-info"/>
+        </svg>
+
+        <p id="res-h">
+          <strong>Your analysis will appear here.</strong>
+        </p>
+
+        <p class="small">
+          Paste an email or upload a screenshot,
+          then select <strong>Check this email</strong>.
+        </p>
+
       </div>
+
     </section>
 
   </div>
 </main>
 
+
+<!-- ================= FOOTER ================= -->
+
 <footer>
   <div class="wrap">
-    <p>An AI model trained on real scam and normal emails gives each email a score, and simple checks for pressure, payment requests, login requests and odd links explain it. It can be wrong, so it never calls an email "safe".</p>
-    <p>RMIT Foundations of AI prototype, 2026 · Free and open-source · Runs on your own computer</p>
+
+    <p>
+      When the local Python server is running, a trained model
+      analyses email text and simple rules check for warning signs.
+      A risk result is not proof that an email is safe or fraudulent.
+      If the server is unavailable, any simulated result is clearly
+      labelled as a demo.
+    </p>
+
+    <p>
+      RMIT Foundations of AI prototype, 2026 ·
+      Email text is sent to your configured local analysis server.
+      Screenshot OCR runs in your browser, and optional feedback
+      is stored in this browser.
+    </p>
+
   </div>
 </footer>
 
-<script src="script.js"></script>
+
+<!-- ================= JAVASCRIPT CONNECTION ================= -->
+
+<script src="./script.js" defer></script>
+
 </body>
 </html>
+
+After replacing the code
+To finish resolving your merge conflict in VS Code:
+
+Open frontend/index.html, replace the entire contents with the code above, and press Ctrl + S.
+
+Open a VS Code terminal and run:
+
+git add frontend/index.html
+
+Run git status and check that there are no remaining unmerged files.
+
+In Source Control, click Continue to finish the merge.
+
+Once the merge completes, sync your changes with GitHub.
+
+Your existing style.css handles the glowing red/orange/yellow borders and coloured risk bars. Your script.js handles the AI response, screenshot OCR and buttons. You do not need to put CSS or JavaScript inside the HTML file again.
+
+
+index.html
+HTML
+
+
+
+
