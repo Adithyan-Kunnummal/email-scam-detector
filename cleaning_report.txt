@@ -1,0 +1,66 @@
+STEP 1  Load files and check label counts (as downloaded)
+file                rows  label 0  label 1 no label  no sender
+Nazario             1565        0     1565        0          0
+Nigerian_Fraud      3332        0     3332        0        331
+Nazario_5           3065     1500     1565        0          2
+Nigerian_5          6331     2999     3332        0        338
+SpamAssasin         5809     4091     1718        0          0
+CEAS_08            39154    17312    21842        0          0
+TREC_05            55990    32329    22946      715         16
+TREC_06            16457    12411     3989       57        268
+TREC_07            53757    24358    29399        0          0
+Enron              29767    15791    13976        0      29767
+Ling                2859     2401      458        0       2859
+TOTAL             218086
+
+STEP 2  Drop broken rows
+  missing or invalid label: -772
+  empty email content:      -10
+
+STEP 3  Build the three columns
+  email_address: extracted the bare address from 'Name <address>', lower-cased;
+    blank if missing, unparseable, or a dataset collector's own address (monkey.org,
+    spamassassin.taint.org)
+  body: subject + content; decoded encoded subject lines, repaired garbled characters,
+    masked email addresses inside the text as [email] and years as [year], removed the
+    Nazario collection domain, replaced the Nazario collector's name with [name],
+    normalised whitespace, cut at 10000 characters
+  body shorter than 20 characters after cleaning: -49
+
+STEP 4  Remove duplicates (same body after ignoring case, spacing and punctuation)
+  labelled both ways in different files (all copies dropped): -25 rows (6 distinct emails)
+  duplicate copies removed: -17356
+      Nazario              23 copies already seen in another file
+      Nigerian_Fraud      107 copies already seen in another file
+      Nazario_5          1565 copies already seen in another file
+      Nigerian_5         4661 copies already seen in another file
+      SpamAssasin         617 copies already seen in another file
+      CEAS_08            3954 copies already seen in another file
+      TREC_05            1235 copies already seen in another file
+      TREC_06             751 copies already seen in another file
+      TREC_07            1013 copies already seen in another file
+      Enron              3427 copies already seen in another file
+      Ling                  3 copies already seen in another file
+
+STEP 5  combined_clean.csv: 199874 unique emails
+category        legit  scam   spam
+source                            
+Nazario             0  1540      0
+Nigerian_Fraud      0  3224      0
+Nazario_5        1498     0      0
+Nigerian_5       1669     0      0
+SpamAssasin      3490     0   1700
+CEAS_08         16673     0  18526
+TREC_05         31518     0  22487
+TREC_06         11776     0   3868
+TREC_07         23740     0  28982
+Enron           13054     0  13273
+Ling             2398     0    458
+  totals: legit 105816, spam 89294, scam 4764
+
+STEP 6  Build data.csv (scam vs not scam)
+  scam: 4764  |  not scam, sampled 3:1 across sources: 14292
+  not-scam sources: TREC_05 4985, TREC_07 3755, CEAS_08 2637, TREC_06 1862, SpamAssasin 552, Nigerian_5 264, Nazario_5 237
+  scam      with an email address: 90%
+  not scam  with an email address: 99%
+  data.csv: 19056 emails, columns email_address, body, label

@@ -1,0 +1,12 @@
+# Data preparation, baseline model and backend (runs on any laptop / lab computer)
+pandas
+scikit-learn
+joblib
+ftfy
+fastapi
+uvicorn
+# DistilBERT (train in Google Colab; only needed locally to run the app with ./scam_model)
+transformers
+datasets
+accelerate
+torch
