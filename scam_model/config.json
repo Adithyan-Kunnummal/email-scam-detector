@@ -11,12 +11,12 @@
   "eos_token_id": null,
   "hidden_dim": 3072,
   "id2label": {
-    "0": "legit",
+    "0": "not scam",
     "1": "scam"
   },
   "initializer_range": 0.02,
   "label2id": {
-    "legit": 0,
+    "not scam": 0,
     "scam": 1
   },
   "max_position_embeddings": 512,
@@ -30,7 +30,7 @@
   "sinusoidal_pos_embds": false,
   "tie_weights_": true,
   "tie_word_embeddings": true,
-  "transformers_version": "5.20.1",
+  "transformers_version": "5.20.2",
   "use_cache": false,
   "vocab_size": 30522
 }
