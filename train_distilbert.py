@@ -1,18 +1,15 @@
 """
-Fine-tune DistilBERT on (sender, body) pairs to classify emails as scam / not scam.
+Fine-tune DistilBERT to classify an email's content (subject + body) as scam / not scam.
 
-The model reads two pieces of text:
-  1. a short description of the sender, e.g. "sender: free webmail address; many
-     digits in name" (from email_features.sender_description - no raw domains)
-  2. the email body (subject + content)
+The model reads ONLY the email content. The sender address is checked separately by the
+rule-based checks in app.py (including the lookalike-domain check), not by the model.
 
-Input (CSV, three columns):
-    data.csv      email_address, body, label ("scam" / "not scam")
-    au_test.csv   same columns, optional Australian test set (never trained on)
+Input (CSV):
+    data.csv   body, label ("scam" / "not scam"); any other columns are ignored
 
 Run in Google Colab (Runtime -> Change runtime type -> T4 GPU):
     !pip install -q transformers datasets accelerate scikit-learn ftfy
-    # upload data.csv, email_features.py (and au_test.csv), then:
+    # upload data.csv and email_features.py (and domain_check.py), then:
     !python train_distilbert.py
     # keep the model if Colab disconnects: save to Google Drive
     #   from google.colab import drive; drive.mount('/content/drive')
@@ -27,7 +24,6 @@ import json
 import os
 
 import numpy as np
-import pandas as pd
 import torch
 from datasets import Dataset
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
@@ -39,48 +35,32 @@ import email_features as ef
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--data", default="data.csv")
-ap.add_argument("--au-test", default="au_test.csv")
 ap.add_argument("--out", default="scam_model")
 ap.add_argument("--model-name", default="distilbert-base-uncased")
 ap.add_argument("--epochs", type=float, default=2)
 ap.add_argument("--max-len", type=int, default=256)
-ap.add_argument("--sender-dropout", type=float, default=0.3)
 ap.add_argument("--limit", type=int, default=0, help="use only N emails (quick test run)")
 ap.add_argument("--no-clean", action="store_true",
                 help="skip clean_text() on the body (only if the data was already cleaned with it)")
 args = ap.parse_args()
 SEED = 42
 
-
-def load(path):
-    df = ef.load_dataset(path, clean=not args.no_clean)
-    df["label"] = df["y"]                       # the Trainer expects integer labels in `label`
-    return df
-
-
-df = load(args.data)
+df = ef.load_dataset(args.data, clean=not args.no_clean)
+df["label"] = df["y"]                          # the Trainer expects integer labels in `label`
 if args.limit:
     df = df.sample(n=min(args.limit, len(df)), random_state=SEED)
 # Same 80/20 split as train_baseline.py, so the two models are compared on the same test set
 train_df, test_df = train_test_split(df, test_size=0.2, stratify=df["label"], random_state=SEED)
 train_df, val_df = train_test_split(train_df, test_size=0.1, stratify=train_df["label"], random_state=SEED)
-rng = np.random.default_rng(SEED)
-train_df = train_df.copy()
-train_df.loc[rng.random(len(train_df)) < args.sender_dropout, "email_address"] = ""
 print(f"train {len(train_df)}  val {len(val_df)}  test {len(test_df)}")
 
 tok = AutoTokenizer.from_pretrained(args.model_name)
 
 
-def encode(batch):
-    senders = [ef.sender_description(a) for a in batch["email_address"]]
-    # only the body is cut if the pair is too long; the short sender description is kept
-    return tok(senders, batch["body"], truncation="only_second", max_length=args.max_len)
-
-
 def to_ds(frame):
-    ds = Dataset.from_pandas(frame[["email_address", "body", "label"]].reset_index(drop=True))
-    return ds.map(encode, batched=True, remove_columns=["email_address", "body"])
+    ds = Dataset.from_pandas(frame[["body", "label"]].reset_index(drop=True))
+    return ds.map(lambda b: tok(b["body"], truncation=True, max_length=args.max_len),
+                  batched=True, remove_columns=["body"])
 
 
 train_ds, val_ds, test_ds = to_ds(train_df), to_ds(val_df), to_ds(test_df)
@@ -123,25 +103,22 @@ trainer = Trainer(model=model, args=training_args, train_dataset=train_ds, eval_
 trainer.train()
 
 
-def evaluate(name, ds):
-    out = trainer.predict(ds)
-    preds = np.argmax(out.predictions, axis=-1)
-    tn, fp, fn, tp = confusion_matrix(out.label_ids, preds, labels=[0, 1]).ravel()
-    m = out.metrics
-    print(f"\n=== {name} ({len(ds)} emails) ===")
-    print(f"accuracy {m['test_accuracy']:.3f}  precision {m['test_precision']:.3f}  "
-          f"recall {m['test_recall']:.3f}  f1 {m['test_f1']:.3f}")
+def report(name, y_true, y_pred):
+    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    p, r, f1, _ = precision_recall_fscore_support(y_true, y_pred, average="binary",
+                                                  pos_label=1, zero_division=0)
+    print(f"\n=== {name} ({len(y_true)} emails) ===")
+    print(f"accuracy {accuracy_score(y_true, y_pred):.3f}  precision {p:.3f}  recall {r:.3f}  f1 {f1:.3f}")
     print(f"Missed scams: {fn}   False alarms: {fp}")
 
 
-evaluate("Test set, with sender addresses", test_ds)
-evaluate("Test set, sender addresses removed", to_ds(test_df.assign(email_address="")))
-if os.path.exists(args.au_test):
-    evaluate("Australian test set", to_ds(load(args.au_test)))
+preds = np.argmax(trainer.predict(test_ds).predictions, axis=-1)
+report("Test set", test_df["label"], preds)
 
 trainer.save_model(args.out)
 tok.save_pretrained(args.out)
 with open(os.path.join(args.out, "input_format.json"), "w") as f:
-    json.dump({"inputs": ["email_features.sender_description(email_address)", "body"],
+    json.dump({"input": "email content (subject + body), cleaned with email_features.clean_text",
                "max_length": args.max_len, "labels": {"0": ef.LABEL_NOT_SCAM, "1": ef.LABEL_SCAM}}, f, indent=2)
 print(f"\nSaved model to {args.out}  (in Colab: zip it and download, or save straight to Drive)")

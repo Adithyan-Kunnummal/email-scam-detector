@@ -25,6 +25,16 @@ const SAMPLES = {
     sender: "exams@rmit.edu.au",
     subject: "Your Semester 2 exam timetable is now available",
     body: "Hi Priya,\n\nYour personal exam timetable for Semester 2, 2026 is now available.\n\nYou can see it any time in the myRMIT app under Study > Exams. Please check the dates, times and locations, and contact Student Connect if you think there is a clash.\n\nGood luck with your exams.\n\nExaminations Team\nRMIT University"
+  },
+  invest: {
+    sender: "sarah.wins88@gmail.com",
+    subject: "I couldn't believe it either",
+    body: "Hi!\n\nI made $3,000 last week with this crypto trading platform that a famous Australian businessman uses. It's a guaranteed return, and you can start with just $250.\n\nOur account manager will guide you through everything. Only a few spots are left this month, so sign up today.\n\nSarah"
+  },
+  job: {
+    sender: "hr.recruit2026@gmail.com",
+    subject: "Remote job offer - start today",
+    body: "Hello,\n\nWe saw your resume online and think you are a great fit. Work from home 2 hours a day and earn $800/week rating products for online stores. No experience needed.\n\nMessage our HR team on WhatsApp to start today.\n\nRecruitment Team"
   }
 };
 
@@ -142,15 +152,30 @@ drop.addEventListener("drop", (e) => runOcr(e.dataTransfer.files[0]));
 const URGENCY = ["urgent", "immediately", "within 24 hours", "suspended", "verify your", "final notice", "act now", "account will be", "locked"];
 const MONEY = ["gift card", "bitcoin", "crypto", "refund", "payment", "bank details", "wire", "fee", "overdue"];
 const CREDENTIALS = ["password", "sign in", "log in", "login", "confirm your details", "security code"];
+const SAFE_CREDENTIAL_PHRASES = /(never|not|won't|will not) (ever )?(ask|request)[^.]{0,40}(password|log ?in|sign in|security code|netcode|pin)/g;
+const INVESTMENT = /guaranteed (returns?|profits?|income)|risk[- ]free (investment|returns?|profit)|crypto(currency)? (trading|investment|platform)|trading (platform|bot|signals?)|double your (money|investment)|investment opportunity|passive income|returns? of \d+ ?%|(made|earned|making|earning) \$[\d,]+ (last|this|a|per|in) (week|month|day)|account manager will guide/;
+const JOB = /(earn|make|paid) (up to )?\$[\d,]+ ?(\/|per|a|an|each) ?(day|week|hour|task)|work (from|at) home[^.]{0,60}(earn|\$)|no experience (needed|required|necessary)|(rating|reviewing|liking) (products|videos|hotels|apps)|task[- ]based (job|work)/;
+const OFF_PLATFORM = /(message|contact|text|add|chat with|reach) (us|me|our( [a-z]+){1,2})? ?(on|via) (whatsapp|telegram|signal|wechat)/;
+const GIFT_CARD_PAYMENT = /(pay|paid|payment|purchase|buy)[^.]{0,40}gift ?cards?|gift ?card (codes?|numbers?)/;
+const PRIZE = /you('ve| have) (won|been selected)|congratulations[^.]{0,40}(won|winner|selected)|claim your (prize|reward|winnings|voucher)|lottery winner/;
+const FAMILY = /\b(hi|hey) (mum|mom|dad)\b[^.]{0,80}(new number|broke|lost)|this is my new number|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)/;
+const STRONG_FLAGS = ["investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation"];
 const TRUSTED = ["ato", "mygov", "auspost", "centrelink", "servicesaustralia", "commbank", "westpac", "anz", "nab", "rmit", "homeaffairs"];
 function demoSignals(text, sender) {
   const t = text.toLowerCase(), found = [], flags = [];
   const add = (flag, msg) => { if (!found.includes(msg)) { found.push(msg); flags.push(flag); } };
   if (URGENCY.some((k) => t.includes(k))) add("urgency", "It pressures you to act quickly, a common scam tactic.");
   if (MONEY.some((k) => t.includes(k))) add("money", "It mentions money, refunds or payment.");
-  if (CREDENTIALS.some((k) => t.includes(k))) add("credentials", "It asks you to sign in or share login details.");
+  const tReq = t.replace(SAFE_CREDENTIAL_PHRASES, "");
+  if (CREDENTIALS.some((k) => tReq.includes(k))) add("credentials", "It asks you to sign in or share login details.");
+  if (GIFT_CARD_PAYMENT.test(t)) add("gift_card_payment", "It asks for payment with gift cards. Real organisations never do this.");
+  if (INVESTMENT.test(t)) add("investment", "It promises easy or guaranteed money from investing, a sign of investment scams.");
+  if (JOB.test(t)) add("job", "It offers easy money for simple work, a sign of job scams.");
+  if (OFF_PLATFORM.test(t)) add("off_platform", "It asks you to continue the conversation on WhatsApp, Telegram or a similar app.");
+  if (PRIZE.test(t)) add("prize", "It says you have won or been selected for a prize, a common scam hook.");
+  if (FAMILY.test(t)) add("family_impersonation", "It claims to be a family member with a new number. Call them on the number you already have before doing anything.");
   for (const url of text.match(/https?:\/\/[^\s<>"')]+/gi) || []) {
-    const host = url.toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
+    const host = url.toLowerCase().replace(/^https?:\/\//, "").split(/[\/?#]/)[0];
     if (/^[\d.]+(:\d+)?$/.test(host)) add("raw_ip_link", "A link goes to a raw number address instead of a website name.");
     else if (TRUSTED.some((b) => host.includes(b)) && !/\.(gov|com|edu)\.au$/.test(host)) add("lookalike_link", `A link mentions a trusted brand but goes to '${host}'.`);
   }
@@ -167,7 +192,10 @@ function demoCheck(text, sender) {
   const p = Math.min(0.97, 0.06 + (1 - Math.exp(-0.4 * hits)));
   const { found, flags } = demoSignals(text, sender);
   const score = Math.min(1, p + 0.05 * found.length);
-  const level = score >= 0.7 ? "High" : score >= 0.4 ? "Medium" : "Low";
+  // as in app.py: a lookalike link or two strong signs are High on their own, one strong sign is never Low
+  const strong = flags.filter((f) => STRONG_FLAGS.includes(f)).length;
+  const level = flags.includes("lookalike_link") || strong >= 2 || score >= 0.7 ? "High"
+    : score >= 0.2 || strong ? "Medium" : "Low";
   const steps = {
     High: ["Don't click links, open attachments or reply.", "Contact the organisation through its official app or website.", "Report it to Scamwatch (scamwatch.gov.au) and delete it."],
     Medium: ["Don't click links in this email.", "Check with the organisation directly using contact details you already trust."],
