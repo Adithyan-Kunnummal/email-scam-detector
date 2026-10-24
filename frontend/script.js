@@ -148,18 +148,20 @@ const drop = $("drop");
 ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", (e) => runOcr(e.dataTransfer.files[0]));
 
-/* ---------- demo mode: mirrors the rules in app.py when the backend isn't running ---------- */
+/* ---------- demo mode: mirrors the rules in app.py when the backend isn't running ----------
+   (except the official-sender cap and the full lookalike check, which need official_domains.txt) */
 const URGENCY = ["urgent", "immediately", "within 24 hours", "suspended", "verify your", "final notice", "act now", "account will be", "locked"];
 const MONEY = ["gift card", "bitcoin", "crypto", "refund", "payment", "bank details", "wire", "fee", "overdue"];
 const CREDENTIALS = ["password", "sign in", "log in", "login", "confirm your details", "security code"];
-const SAFE_CREDENTIAL_PHRASES = /(never|not|won't|will not) (ever )?(ask|request)[^.]{0,40}(password|log ?in|sign in|security code|netcode|pin)/g;
+const SAFE_CREDENTIAL_PHRASES = /(never|not|won't|will not|don't|do not) (ever )?(ask|request|provide|share|give|send|disclose)[^.]{0,40}(password|log ?in|sign in|security code|netcode|pin)/g;
+const SECRET_REQUEST = /\b(reply|respond|send|provide|tell us|give us)\b[^.=\n]{0,60}\b(password|passcode|pin|security code|netcode|one[- ]time code|card number)\b/;
 const INVESTMENT = /guaranteed (returns?|profits?|income)|risk[- ]free (investment|returns?|profit)|crypto(currency)? (trading|investment|platform)|trading (platform|bot|signals?)|double your (money|investment)|investment opportunity|passive income|returns? of \d+ ?%|(made|earned|making|earning) \$[\d,]+ (last|this|a|per|in) (week|month|day)|account manager will guide/;
 const JOB = /(earn|make|paid) (up to )?\$[\d,]+ ?(\/|per|a|an|each) ?(day|week|hour|task)|work (from|at) home[^.]{0,60}(earn|\$)|no experience (needed|required|necessary)|(rating|reviewing|liking) (products|videos|hotels|apps)|task[- ]based (job|work)/;
 const OFF_PLATFORM = /(message|contact|text|add|chat with|reach) (us|me|our( [a-z]+){1,2})? ?(on|via) (whatsapp|telegram|signal|wechat)/;
 const GIFT_CARD_PAYMENT = /(pay|paid|payment|purchase|buy)[^.]{0,40}gift ?cards?|gift ?card (codes?|numbers?)/;
 const PRIZE = /you('ve| have) (won|been selected)|congratulations[^.]{0,40}(won|winner|selected)|claim your (prize|reward|winnings|voucher)|lottery winner/;
 const FAMILY = /\b(hi|hey) (mum|mom|dad)\b[^.]{0,80}(new number|broke|lost)|this is my new number|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)/;
-const STRONG_FLAGS = ["investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation"];
+const STRONG_FLAGS = ["investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation", "secret_request"];
 const TRUSTED = ["ato", "mygov", "auspost", "centrelink", "servicesaustralia", "commbank", "westpac", "anz", "nab", "rmit", "homeaffairs"];
 function demoSignals(text, sender) {
   const t = text.toLowerCase(), found = [], flags = [];
@@ -168,6 +170,7 @@ function demoSignals(text, sender) {
   if (MONEY.some((k) => t.includes(k))) add("money", "It mentions money, refunds or payment.");
   const tReq = t.replace(SAFE_CREDENTIAL_PHRASES, "");
   if (CREDENTIALS.some((k) => tReq.includes(k))) add("credentials", "It asks you to sign in or share login details.");
+  if (SECRET_REQUEST.test(tReq)) add("secret_request", "It asks you to send a password, PIN or code. Real organisations never ask for these by email.");
   if (GIFT_CARD_PAYMENT.test(t)) add("gift_card_payment", "It asks for payment with gift cards. Real organisations never do this.");
   if (INVESTMENT.test(t)) add("investment", "It promises easy or guaranteed money from investing, a sign of investment scams.");
   if (JOB.test(t)) add("job", "It offers easy money for simple work, a sign of job scams.");

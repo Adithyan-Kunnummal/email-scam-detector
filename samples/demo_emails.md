@@ -24,13 +24,25 @@ results are a sanity check, not an evaluation (see PROJECT_CONTEXT.md section 5e
 | 11 | "Hi everyone, reminder that Assignment 3 is due Friday 1 November at 11:59pm. Submit via Canvas." | lecturer@rmit.edu.au | Low | genuine |
 | 12 | "Your AGL bill for 1 Aug - 31 Oct is $214.36, due on 20 November. View and pay your bill in the AGL app or at agl.com.au." | (none) | Low | genuine |
 
-## Known false alarms (use in the report, not the demo)
+## Genuine bank and government emails (the official-sender cap)
 
-| Email | Result | Why |
-|---|---|---|
-| "Your parcel is on its way. Tracking number: 33ABC123456. Estimated delivery: Tuesday. You can follow your delivery in the AusPost app." | High (0.85) | Short notification emails look like the phishing in the training data. Without the subject and greeting the same text scores 0.03, so the model is unstable on this kind of email. |
-| "Your Medicare claim has been processed. We have paid $41.20 ... into your nominated bank account." | High (0.999) | Government and bank wording with no link. The model has seen few genuine emails like this. |
-| "Your monthly eStatement ... is now available in the CommBank app. We will never ask you for your password or NetCode by email." | High (0.99) | Same reason. A genuine sender address does not lower the risk, by design, because addresses can be forged. |
+The model rates these genuine emails as scams (scores 0.85–0.999), because its training data has almost no genuine bank or government emails. **With their real sender address they are Medium**: the explanation says the address is official but could be faked, so check in the official app. **Without a sender address they stay High.** Good for showing in the demo why adding the sender helps, and for the report's limitations.
+
+| Email | Sender | With sender | Without sender |
+|---|---|---|---|
+| "Your parcel is on its way. Tracking number: 33ABC123456. Estimated delivery: Tuesday. You can follow your delivery in the AusPost app." (with subject and greeting) | notifications@auspost.com.au | Medium | High (0.85) |
+| "Your Medicare claim has been processed. We have paid $41.20 for your claim on 21 October into your nominated bank account. You can see your claims history in the Medicare app through myGov." | noreply@servicesaustralia.gov.au | Medium | High (0.999) |
+| "Your monthly eStatement for your Everyday Account is now available in the CommBank app. We will never ask you for your password or NetCode by email." | noreply@commbank.com.au | Medium | High (0.99) |
+| "Never share your password or PIN with anyone. Your new card has been sent and will arrive within 5 business days. Activate it in the NAB app." | no-reply@nab.com.au | Medium | High (0.84) |
+
+A forged official sender does not get the same treatment if anything contradicts it:
+
+| Email | Sender | Result | Why |
+|---|---|---|---|
+| "Your account is suspended. Verify your details at https://commbank-verify.com within 24 hours." | noreply@commbank.com.au | High | the link imitates commbank.com.au |
+| "Your account is suspended. Verify your details at https://bit.ly/3xYz within 24 hours." | noreply@commbank.com.au | High | the link isn't an official website, so the address isn't trusted |
+| "Your account is suspended. Reply to this email with your NetBank client number and password within 24 hours." | noreply@commbank.com.au | High | asks for a password by email |
+| "Your account is suspended. Reply with your NetBank password within 24 hours." | commbank.support@outlook.com | High | personal webmail is never trusted |
 
 ## Screenshots for the OCR demo
 

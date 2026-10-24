@@ -36,13 +36,15 @@ POST /check {text, sender?}  -->  [FastAPI backend: app.py]
         content: urgency, money/payment, login/password requests, raw-IP links,
                  lookalike LINK domains
         strong:  investment, job, gift-card payment, prize, "Hi Mum" new number,
-                 move to WhatsApp/Telegram (scam types the model misses, section 5e)
+                 move to WhatsApp/Telegram, asks for a password/PIN by email
+                 (scam types the model misses, sections 5e-5f)
         sender:  lookalike SENDER domain, government claim from a non-.gov.au sender,
                  unusual domain ending (.xyz…), free webmail + official-sounding text
       lookalike check = domain_check.py + official_domains.txt (no training)
    4. risk_level(): lookalike sender or link, or 2 strong signs -> High;
                     otherwise probability + 0.05 per warning sign -> >=0.7 High,
-                    >=0.2 Medium (0.4 with the baseline), else Low; 1 strong sign is never Low
+                    >=0.2 Medium (0.4 with the baseline), else Low; 1 strong sign is never Low;
+                    real official sender + only official links + no strong sign -> High becomes Medium
    5. template reasons + next steps
      <-- JSON {risk_level, scam_probability, reasons[], next_steps[], model}
 [Result card] level + reasons + next steps + feedback buttons
@@ -51,7 +53,7 @@ POST /check {text, sender?}  -->  [FastAPI backend: app.py]
 Design decisions already made:
 
 - **The model reads only the email content.** The sender address is never given to the model; it is handled entirely by the rule-based checks. (Tested: adding sender features to the model changed nothing on the test set — 9 missed scams either way — and removed a dataset shortcut where a missing sender nudged emails towards "scam".)
-- **Address signals are asymmetric.** A lookalike address or link raises the result to High; an official-looking address never lowers the risk, because sender addresses can be forged.
+- **Address signals are asymmetric.** A lookalike address or link raises the result to High. A real official sender can only lower High to Medium, never to Low, and only if every link goes to an official website and no strong scam sign fires, because sender addresses can be forged (section 5f). *(Changed 24 Oct 2026: previously an official address never lowered the risk.)*
 - **No trained model for domains.** A trained domain classifier was tested and rejected (section 5c).
 - **The UI shows Low/Medium/High, not a raw percentage or scam/not-scam.** The model is evaluated as a binary classifier, but users see three levels so uncertainty is shown honestly.
   - Wording: High = "Likely a scam"; Medium = "Be careful – check first"; Low = "No strong warning signs found" (never "Safe").
@@ -162,6 +164,32 @@ The two are tied on this test set; a difference of 2 emails is noise. DistilBERT
 Compared with the model alone at the old cut-offs (14 scams Low, 1 genuine Medium, 10 genuine High), the test-set gain is small: one more scam kept out of Low, at the cost of 6 more genuine emails at Medium. That is expected, because the test set contains few of the modern scam types the rules target. The main gain is on modern scams (above).
 
 **Limitations for the report:** the test data is old and mixed-source, so its scores overstate real-world accuracy; the strong-sign rules are hand-written keyword patterns that scammers can avoid by rewording; a brand name in a subdomain of another site (`my-gov-au.verify-id.com`) is not flagged, because only the registered name is checked; screenshots lose link addresses.
+
+### 5f. Genuine bank and government emails: official-sender cap (24 Oct 2026)
+
+**Problem.** DistilBERT rates many genuine bank and government emails as scams (CommBank eStatement 0.99, Medicare claim 0.999, NAB card notice 0.84, Australia Post tracking 0.85). In the training data, words like "bank", "account", "myGov" and "password" appear almost only in phishing; there are almost no genuine notifications from these organisations.
+
+**Change (`official_sender()` in `app.py`).** If all of these hold, a High result is lowered to **Medium (never Low)**:
+- the sender is a real official address: on the allowlist, or ending in `.gov.au` / `.edu.au`;
+- every link in the email goes to an official website;
+- no lookalike, raw-IP or strong scam sign fires.
+
+The reason shown is: "The sender's address is a real official address and its links go to official websites, so it may be genuine. But addresses can be faked: check in the official app or website before you act."
+
+Personal mail never counts: free webmail (outlook.com, icloud.com …) and the exact domains Australian internet providers give their customers (`telstra.com`, `iinet.net.au`, `tpg.com.au` …). Without the provider exclusion, 15 Nigerian-fraud emails from personal `@telstra.com` accounts would have been capped.
+
+**Added with it:** a strong sign for **asking for a password, PIN or one-time code by email** (genuine organisations never do this). It fires on 0 of 14,292 genuine training emails. Safety advice such as "never share your password" is ignored. A forged CommBank address asking for a password by reply therefore stays High.
+
+**Trade-off, measured on `data.csv` (which has sender addresses):**
+
+| | Official-sender condition holds | Lowered from High to Medium |
+|---|---|---|
+| Scams (4,764) | 16 | 16 (0.3%), all forged brand addresses: eBay 3, PayPal 3, Amazon 2, Apple 4, DHL, Microsoft, Google, Uber |
+| Genuine (14,292) | 61 | 1 (the other 60 were already Low) |
+
+The dataset can't show the benefit, because it has almost no genuine bank or government emails. The hand-written examples can: genuine CommBank, NAB, Medicare and Australia Post emails sent from their real addresses are now Medium instead of High. Forged official senders were common in the 2000s data; today, major banks and government agencies publish DMARC policies that make forging their exact domain harder. But the app can't verify an address the user types in. The proper fix is checking SPF/DKIM/DMARC in a Gmail add-on (section 7) and retraining with genuine notifications.
+
+The test set has no sender addresses, so this cap doesn't change the section 5e test-set results.
 
 ### 5d. Format required for any training file
 

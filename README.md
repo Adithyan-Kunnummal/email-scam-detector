@@ -64,7 +64,7 @@ Web page (frontend/) --POST /check {text, sender?}--> FastAPI (app.py)
                                      lookalike LINK domains
                             scam types the model misses (strong signs): investment,
                                      job, gift-card payment, prize, "Hi Mum" new number,
-                                     move to WhatsApp/Telegram
+                                     move to WhatsApp/Telegram, asks for a password/PIN
                             sender:  lookalike SENDER domain, government claim from a
                                      non-.gov.au sender, unusual ending (.xyz ...),
                                      free webmail + official-sounding text
@@ -74,11 +74,14 @@ Web page (frontend/) --POST /check {text, sender?}--> FastAPI (app.py)
                             High (>=0.7) / Medium (>=0.2; 0.4 for the baseline) / Low,
                             and 1 strong sign is never Low. Cut-offs chosen on the
                             validation split with tune_thresholds.py.
+                            Real official sender + only official links + no strong
+                            sign -> High is lowered to Medium (never Low).
    <-- {risk_level, scam_probability, reasons[], flags[], next_steps[], model}
 ```
 
 - **The sender address is never given to the model.** In the public datasets, legitimate senders are mostly a few organisations (enron.com, python.org ...), so a model learns where an email came from rather than whether it is a scam. Adding sender features to the model changed nothing on the test set.
-- **Address signals only ever raise the risk.** A lookalike address or link makes the result High, but an official-looking address never lowers it, because sender addresses can be forged.
+- **A lookalike address or link makes the result High.** Genuine organisations don't send from imitation addresses.
+- **A real official sender can lower High to Medium, never to Low.** The model rates many genuine bank and government emails as scams, because its training data has almost none. If the sender is an organisation's real address (on the allowlist, or `.gov.au`), every link goes to an official website and there is no strong scam sign, the result is capped at Medium with the note that addresses can be faked. Personal mail (outlook.com, icloud.com, telstra.com …) never counts. In the training data this cap would move 16 of 4,764 scams (0.3%, forged PayPal, eBay, Apple … addresses) from High to Medium.
 - **The lookalike check is not a trained model.** It compares a domain with the allowlist after undoing look-alike characters (0→o, rn→m …), small typos, extra words (auspost-refund.com), the real address placed in front of another site (my.gov.au.secure-check.com) and wrong endings (telstra.co). `.gov.au` and `.edu.au` addresses are never flagged, because only government and education bodies can register them. A brand's exact name on another country's ending (vodafone.co.nz) is not flagged either, because it is usually the brand's own overseas site. If a brand's genuine domain gets flagged, add it to `official_domains.txt`.
 
 ## Files

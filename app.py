@@ -26,6 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import email_features as ef
+from domain_check import PROTECTED_SUFFIXES
 
 MODEL_DIR = os.environ.get("SCAM_MODEL_DIR", "scam_model")
 BASELINE_PATH = os.environ.get("BASELINE_MODEL", "baseline_model.joblib")
@@ -74,7 +75,8 @@ MONEY = ["gift card", "bitcoin", "crypto", "refund", "payment", "bank details",
          "wire", "fee", "overdue"]
 CREDENTIALS = ["password", "sign in", "log in", "login", "confirm your details", "security code"]
 # Genuine emails often say "we will never ask for your password"; that is not a request
-SAFE_CREDENTIAL_PHRASES = re.compile(r"(never|not|won't|will not) (ever )?(ask|request)[^.]{0,40}"
+SAFE_CREDENTIAL_PHRASES = re.compile(r"(never|not|won't|will not|don't|do not) (ever )?"
+                                     r"(ask|request|provide|share|give|send|disclose)[^.]{0,40}"
                                      r"(password|log ?in|sign in|security code|netcode|pin)")
 GOV_WORDS = ("ato", "mygov", "centrelink", "medicare", "home affairs")
 # Scam types the model misses because the training data has few examples of them
@@ -94,9 +96,46 @@ PRIZE = re.compile(r"you('ve| have) (won|been selected)|congratulations[^.]{0,40
                    r"|claim your (prize|reward|winnings|voucher)|lottery winner")
 FAMILY = re.compile(r"\b(hi|hey) (mum|mom|dad)\b[^.]{0,80}(new number|broke|lost)|this is my new number"
                     r"|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)")
+# Asking for a password or PIN to be sent back: genuine organisations never do this by email
+SECRET_REQUEST = re.compile(r"\b(reply|respond|send|provide|tell us|give us)\b[^.=\n]{0,60}"
+                            r"\b(password|passcode|pin|security code|netcode|one[- ]time code|card number)\b")
 LOOKALIKE_FLAGS = {"lookalike_link", "lookalike_sender"}
 # Each of these is a strong sign on its own: at least Medium, and two together make High.
-STRONG_FLAGS = {"investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation"}
+STRONG_FLAGS = {"investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation",
+                "secret_request"}
+
+
+def link_hosts(text: str) -> list[str]:
+    """Web addresses (host names) of the links in the text."""
+    return [re.split(r"[/?#:]", re.sub(r"^https?://", "", url.lower()))[0] for url in URL_RE.findall(text)]
+
+
+def is_official(domain: str) -> bool:
+    """On the official allowlist, or an ending only government / education bodies can register."""
+    return (any(domain == s or domain.endswith("." + s) for s in PROTECTED_SUFFIXES)
+            or ef.check_domain(domain)["verdict"] == "official")
+
+
+# Internet providers' customer mail: anyone with an internet plan can get one of these exact
+# addresses (the providers' own staff and notices use other domains or subdomains)
+ISP_MAIL = {"telstra.com", "optushome.com.au", "iinet.net.au", "tpg.com.au", "internode.on.net",
+            "dodo.com.au", "westnet.com.au", "adam.com.au", "ozemail.com.au"}
+
+
+def official_sender(text: str, sender: str, found: dict) -> str:
+    """The sender's domain if it is an organisation's real address and nothing in the email
+    contradicts it (every link goes to an official website, no lookalike or strong scam sign).
+    Personal mail never counts: anyone can get an outlook.com, icloud.com or telstra.com address."""
+    if (LOOKALIKE_FLAGS | STRONG_FLAGS | {"raw_ip_link"}) & found.keys():
+        return ""
+    addr = ef.parse_address(sender)
+    if not addr:
+        return ""
+    domain = addr.split("@")[1]
+    if (domain in ISP_MAIL or any(domain == w or domain.endswith("." + w) for w in ef.FREE_WEBMAIL)
+            or not is_official(domain)):
+        return ""
+    return domain if all(is_official(h) for h in link_hosts(text)) else ""
 
 
 def signals(text: str, sender: str) -> dict[str, str]:
@@ -112,8 +151,12 @@ def signals(text: str, sender: str) -> dict[str, str]:
         add("urgency", "It pressures you to act quickly, a common scam tactic.")
     if any(k in t for k in MONEY):
         add("money", "It mentions money, refunds or payment.")
-    if any(k in SAFE_CREDENTIAL_PHRASES.sub("", t) for k in CREDENTIALS):
+    t_requests = SAFE_CREDENTIAL_PHRASES.sub("", t)
+    if any(k in t_requests for k in CREDENTIALS):
         add("credentials", "It asks you to sign in or share login details.")
+    if SECRET_REQUEST.search(t_requests):
+        add("secret_request", "It asks you to send a password, PIN or code. Real organisations never "
+                              "ask for these by email.")
     if GIFT_CARD_PAYMENT.search(t):
         add("gift_card_payment", "It asks for payment with gift cards. Real organisations never do this.")
     if INVESTMENT.search(t):
@@ -127,8 +170,7 @@ def signals(text: str, sender: str) -> dict[str, str]:
     if FAMILY.search(t):
         add("family_impersonation", "It claims to be a family member with a new number. Call them on "
                                     "the number you already have before doing anything.")
-    for url in URL_RE.findall(text):
-        host = re.split(r"[/?#:]", re.sub(r"^https?://", "", url.lower()))[0]
+    for host in link_hosts(text):
         if re.fullmatch(r"[\d.]+", host):
             add("raw_ip_link", "A link goes to a raw number address instead of a website name.")
             continue
@@ -199,6 +241,16 @@ def check(email: EmailIn):
     found = signals(email.text, sender)    # rules read the original text (links intact)
     level = risk_level(p, len(found), lookalike=bool(LOOKALIKE_FLAGS & found.keys()),
                        n_strong=len(STRONG_FLAGS & found.keys()))
+    # The model flags many genuine bank and government emails, because its training data has
+    # almost none. A real official sender with only official links lowers High to Medium, never
+    # to Low: the address the user typed can't be verified and could be forged.
+    official = official_sender(email.text, sender, found)
+    if official and level == "High":
+        level = "Medium"
+        found["official_sender"] = (f"The sender's address ({official}) is a real official address and "
+                                    "its links go to official websites, so it may be genuine. But "
+                                    "addresses can be faked: check in the official app or website "
+                                    "before you act.")
     return {
         "risk_level": level,
         "scam_probability": round(p, 3),
