@@ -730,3 +730,195 @@ footer p { max-width: 75ch; }
     }
 }
 
+
+/* ==========================================
+   FOOTER — FULL WIDTH AND BOTTOM SPACING
+   ========================================== */
+
+/* Make the page extend to the bottom */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Let the main content take available space */
+main {
+    flex: 1;
+}
+
+/* Footer position and spacing */
+footer {
+    width: 100%;
+    margin-top: auto;
+    padding: 20px 24px 12px;
+}
+
+/* Remove the narrow container width */
+footer .wrap {
+    width: 100%;
+    max-width: none;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* Allow longer lines of text */
+footer p {
+    width: 100%;
+    max-width: none;
+    margin: 0 0 8px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* Remove extra space below the last line */
+footer p:last-child {
+    margin-bottom: 0;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 650px) {
+    footer {
+        padding: 18px 14px 10px;
+    }
+}
+
+
+/* ==========================================
+   EXPLAINABLE WARNING CARDS + SAFE TEXT MARKS
+   ========================================== */
+.warning-intro {
+  color: var(--ink-2);
+  font-size: .82rem;
+  line-height: 1.45;
+  margin: -4px 0 13px;
+}
+.warning-cards { display: grid; gap: 10px; }
+.warning-card {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--field);
+  overflow: hidden;
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.warning-card:hover, .warning-card[open] { border-color: rgba(104, 200, 215, .66); }
+.warning-card > summary {
+  color: var(--ink);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 12px;
+  line-height: 1.4;
+  min-height: 60px;
+  cursor: pointer;
+}
+.warning-card > summary:hover { background: rgba(104, 200, 215, .065); }
+.warning-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: rgba(255, 79, 94, .17);
+  color: #FF817C;
+  font: 700 .86rem var(--f-body);
+}
+.warning-neutral .warning-symbol {
+  background: rgba(104, 200, 215, .13);
+  color: var(--accent);
+}
+.warning-heading { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.warning-heading strong { font-size: .89rem; font-weight: 700; color: var(--ink); }
+.warning-heading > span { font-size: .81rem; color: var(--ink-2); font-weight: 400; overflow-wrap: anywhere; }
+.warning-chevron { flex: 0 0 18px; margin: 4px 0 0; color: var(--accent); }
+.warning-card-content {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 15px 50px;
+  display: grid;
+  gap: 10px;
+  font-size: .81rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.warning-card-content p strong { display: block; font-size: .79rem; color: var(--ink); margin-bottom: 2px; }
+
+.evidence-section { min-width: 0; }
+.highlight-review {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--field);
+  padding: 0;
+  overflow: hidden;
+}
+.highlight-review > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  color: var(--ink);
+  font-size: .87rem;
+  font-weight: 700;
+}
+.highlight-review > summary:hover { background: rgba(104, 200, 215, .07); }
+.highlight-review > summary svg { color: var(--accent); flex: 0 0 17px; }
+.evidence-count {
+  margin-left: auto;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: .68rem;
+  font-weight: 700;
+  background: rgba(104, 200, 215, .12);
+  color: var(--accent);
+}
+.highlight-note {
+  padding: 10px 14px 12px;
+  color: var(--ink-2);
+  font-size: .76rem;
+  line-height: 1.5;
+}
+.annotated-email {
+  max-height: 250px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface);
+  color: var(--ink);
+  margin: 0 12px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: .82rem;
+  line-height: 1.75;
+  user-select: text;
+}
+.evidence-mark {
+  padding: 1px 2px;
+  border-radius: 4px;
+  background: rgba(255, 138, 0, .27);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 138, 0, .7);
+  text-underline-offset: 3px;
+}
+.evidence-urgency, .evidence-credentials, .evidence-gift_card_payment, .evidence-sender {
+  background: rgba(255, 59, 48, .27);
+  text-decoration-color: #FF5C54;
+}
+.evidence-link, .evidence-raw_ip_link, .evidence-lookalike_link {
+  background: rgba(104, 200, 215, .24);
+  text-decoration-color: #68C8D7;
+}
+@media (max-width: 520px) {
+  .warning-card-content { padding-left: 14px; }
+  .warning-card > summary { gap: 8px; padding: 11px 10px; }
+  .annotated-email { max-height: 220px; font-size: .78rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .warning-card { transition: none; }
+}

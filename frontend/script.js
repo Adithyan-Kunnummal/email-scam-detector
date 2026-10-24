@@ -226,12 +226,221 @@ async function callApi(text, sender) {
   } finally { clearTimeout(timer); }
 }
 
+/* ---------- evidence cards and text highlighting ----------
+   These are explanations of observable rule matches, NOT token-level
+   attribution of the DistilBERT model's decision. No links are activated. */
+const WARNING_INFO = {
+  urgency: {
+    title: "Urgent or pressuring language",
+    why: "Scammers often create time pressure so people act before checking the request. Legitimate messages can also have deadlines.",
+    check: "Pause and verify the request using the organisation's official website or app."
+  },
+  money: {
+    title: "Money or payment mentioned",
+    why: "Requests involving refunds, fees or bank details deserve extra verification. Mentioning money alone does not prove a scam.",
+    check: "Check whether the charge or refund exists by visiting the organisation independently."
+  },
+  credentials: {
+    title: "Account details requested",
+    why: "Links asking for passwords, verification codes or banking information can be used to steal accounts or money.",
+    check: "Do not enter details through the email link. Sign in using an app or address you already trust."
+  },
+  lookalike_link: {
+    title: "Website address needs checking",
+    why: "A URL can contain a brand name yet lead to an unrelated domain. The visible address is not proof of who owns the website.",
+    check: "Compare the actual domain with the address published on the organisation's official site. Do not open the suspicious link."
+  },
+  raw_ip_link: {
+    title: "Unusual numerical link",
+    why: "A link pointing to a numerical IP address rather than a recognisable domain can be suspicious, especially for account-related requests.",
+    check: "Avoid the link and navigate to the service through its official website instead."
+  },
+  fake_gov_sender: {
+    title: "Sender domain may not match",
+    why: "The sender's email domain may not be associated with the government organisation named in the message. A sender address alone is not proof of authenticity.",
+    check: "Verify the sender and request through an official government website, not by replying."
+  },
+  gift_card_payment: {
+    title: "Gift card payment requested",
+    why: "Scammers commonly demand gift card codes because they can be redeemed quickly and are difficult to recover.",
+    check: "Do not buy or send gift cards to pay a fee or resolve an account issue."
+  },
+  investment: {
+    title: "Investment returns promised",
+    why: "Guaranteed profits or unusually easy returns are common features of investment scams. Investment returns are never guaranteed.",
+    check: "Verify the business independently and avoid sending funds based only on the email."
+  },
+  job: {
+    title: "Unusually easy job offer",
+    why: "Offers of high pay for minimal work can be a way to obtain personal details or recruit victims into payment scams.",
+    check: "Verify the employer and job posting independently; never pay money to start a job."
+  },
+  off_platform: {
+    title: "Moved to an external messaging app",
+    why: "A request to switch to WhatsApp or Telegram may bypass the platform's normal checks and reporting features.",
+    check: "Confirm who you are talking to through a known, trusted channel."
+  },
+  prize: {
+    title: "Unexpected prize or reward",
+    why: "Unexpected prizes can be used to lure people into clicking links or paying a 'release' fee.",
+    check: "Verify the offer independently and do not pay to claim an unsolicited prize."
+  },
+  family_impersonation: {
+    title: "Possible family impersonation",
+    why: "Scammers may pretend to be a relative using a new phone number to request immediate help or money.",
+    check: "Call the person on a number you already know before responding."
+  },
+  general: {
+    title: "Additional analysis observation",
+    why: "This observation comes from the email analysis. The interface cannot identify an exact supporting phrase for every model prediction.",
+    check: "Consider the entire email and verify unexpected requests independently."
+  },
+  none: {
+    title: "No matching warning patterns",
+    why: "The available rules did not identify a specific warning in this email. A low-risk assessment does not guarantee safety.",
+    check: "Check the sender and any unexpected links before acting."
+  }
+};
+
+function inferWarningKey(reason) {
+  const r = String(reason).toLowerCase();
+  if (/no specific warning signs|no strong warning signs/.test(r)) return "none";
+  if (/gift card/.test(r)) return "gift_card_payment";
+  if (/investment|guaranteed money|guaranteed returns/.test(r)) return "investment";
+  if (/easy money|job scam|simple work/.test(r)) return "job";
+  if (/whatsapp|telegram|messaging app/.test(r)) return "off_platform";
+  if (/family member|new number/.test(r)) return "family_impersonation";
+  if (/prize|winner/.test(r)) return "prize";
+  if (/raw number address|raw ip|numerical ip/.test(r)) return "raw_ip_link";
+  if (/mentions a trusted brand|lookalike|link.*unofficial domain|trusted brand but/.test(r)) return "lookalike_link";
+  if (/government but was sent|sender.*domain|sender.*unofficial domain/.test(r)) return "fake_gov_sender";
+  if (/login details|log in|sign in|password|security code|credentials/.test(r)) return "credentials";
+  if (/pressures you|quickly|act urgently|urgency/.test(r)) return "urgency";
+  if (/money|refund|payment|bank details|fee/.test(r)) return "money";
+  return null;
+}
+
+function getWarningItems(res) {
+  const reasons = Array.isArray(res.reasons) ? res.reasons : [];
+  const flags = Array.isArray(res.flags) ? res.flags : [];
+  const aligned = reasons.length === flags.length;
+  if (!reasons.length) return [{ key: "none", text: "No specific warning signs detected." }];
+  return reasons.map((text, index) => {
+    const inferred = inferWarningKey(text);
+    const suggested = aligned ? flags[index] : null;
+    const key = inferred || (Object.hasOwn(WARNING_INFO, suggested) ? suggested : "general");
+    return { key, text: String(text) };
+  });
+}
+
+function renderWarningCards(items) {
+  return `<div class="warning-cards">
+    ${items.map(({key, text}, index) => {
+      const info = WARNING_INFO[key] || WARNING_INFO.general;
+      const neutral = key === "none";
+      return `<details class="warning-card${neutral ? " warning-neutral" : ""}" ${index === 0 && !neutral ? "open" : ""}>
+        <summary>
+          <span class="warning-symbol" aria-hidden="true">${neutral ? "i" : "!"}</span>
+          <span class="warning-heading"><strong>${esc(info.title)}</strong><span>${esc(text)}</span></span>
+          <svg class="warning-chevron" width="18" height="18" aria-hidden="true"><use href="#i-chev"/></svg>
+        </summary>
+        <div class="warning-card-content">
+          <p><strong>Why it matters</strong> ${esc(info.why)}</p>
+          <p><strong>What to check</strong> ${esc(info.check)}</p>
+        </div>
+      </details>`;
+    }).join("")}
+  </div>`;
+}
+
+// Highlight only phrases matched by known rules. Text remains text, never a live link.
+// Keep original input editable; present a separate, read-only annotated copy.
+const HIGHLIGHT_RULES = {
+  urgency: [/\b(?:urgent(?:ly)?|immediately|within\s+(?:24|48)\s+hours?|act now|final notice|suspended|will be cancelled|returned to the sender|only a few spots)\b/gi],
+  money: [/\b(?:redelivery fee|bank details|refunds?|payments?|pay now|gift cards?|bitcoin|crypto|fees?|overdue)\b/gi, /\$\s?\d[\d,.]*/g],
+  credentials: [/\b(?:verify your (?:bank details|identity|password)|confirm your details|log in|login|sign in|password|security code|gift card codes)\b/gi],
+  gift_card_payment: [/\b(?:gift cards?|gift card codes|pay(?:ment)? (?:is )?accepted by gift card)\b/gi],
+  investment: [/\b(?:guaranteed returns?|guaranteed profits?|crypto trading platform|risk[- ]free investment|account manager will guide|passive income|investment opportunity)\b/gi],
+  job: [/\b(?:work from home|no experience needed|rating products|remote job offer|earn \$[\d,]+\/?week)\b/gi],
+  off_platform: [/\b(?:WhatsApp|Telegram|Signal|WeChat)\b/gi],
+  prize: [/\b(?:claim your prize|lottery winner|you have won|you've won|congratulations)\b/gi],
+  family_impersonation: [/\b(?:this is my new number|my phone is broken|hi mum|hi dad)\b/gi]
+};
+
+function suspiciousUrlSpans(text, kind) {
+  const spans = [];
+  const re = /https?:\/\/[^\s<>"')]+/gi;
+  for (const m of text.matchAll(re)) {
+    const urlText = m[0].replace(/[.,;!?]+$/, "");
+    let hostname;
+    try { hostname = new URL(urlText).hostname.toLowerCase(); }
+    catch { continue; }
+    const numericHost = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+    const lookalikeHost = TRUSTED.some((brand) => hostname.includes(brand)) && !/\.(?:gov|com|edu)\.au$/.test(hostname);
+    if ((kind === "raw_ip_link" && numericHost) || (kind === "lookalike_link" && lookalikeHost)) {
+      spans.push({ start: m.index, end: m.index + urlText.length, kind: "link" });
+    }
+  }
+  return spans;
+}
+
+function annotatedTextHTML(text, warningKeys, sender) {
+  const spans = [];
+  const active = new Set(warningKeys);
+  for (const key of active) {
+    for (const rule of HIGHLIGHT_RULES[key] || []) {
+      for (const m of text.matchAll(rule)) {
+        if (m[0].length) spans.push({ start: m.index, end: m.index + m[0].length, kind: key });
+      }
+    }
+    if (key === "raw_ip_link" || key === "lookalike_link") {
+      spans.push(...suspiciousUrlSpans(text, key));
+    }
+  }
+  if (active.has("fake_gov_sender") && sender) {
+    const start = text.indexOf("From: " + sender);
+    if (start >= 0) spans.push({ start: start + 6, end: start + 6 + sender.length, kind: "sender" });
+  }
+  // If multiple rules find overlapping spans, prefer the longest matching phrase.
+  spans.sort((a, b) => a.start - b.start || b.end - a.end);
+  let cursor = 0, count = 0, html = "";
+  for (const span of spans) {
+    if (span.start < cursor || span.end > text.length) continue;
+    html += esc(text.slice(cursor, span.start));
+    html += `<mark class="evidence-mark evidence-${span.kind}" title="Rule-based match">${esc(text.slice(span.start, span.end))}</mark>`;
+    cursor = span.end;
+    count++;
+  }
+  html += esc(text.slice(cursor));
+  return { html, count };
+}
+
+function renderEmailEvidence(items, email) {
+  const body = (email && email.body) || "";
+  const subject = (email && email.subject) || "";
+  const sender = (email && email.sender) || "";
+  const header = [subject ? "Subject: " + subject : "", sender ? "From: " + sender : ""].filter(Boolean).join("\n");
+  const source = (header ? header + "\n\n" : "") + body;
+  const { html, count } = annotatedTextHTML(source, items.map((item) => item.key), sender);
+  return `<details class="highlight-review" ${count ? "open" : ""}>
+      <summary><svg width="17" height="17" aria-hidden="true"><use href="#i-chev"/></svg>
+        ${count ? `Highlighted email <span class="evidence-count">${count} rule match${count === 1 ? "" : "es"}</span>` : "Review analysed email"}
+      </summary>
+      <p class="highlight-note">${count
+        ? "Coloured phrases are matches from simple detection rules—not an explanation of how DistilBERT made its prediction. Matches alone don't prove a scam."
+        : "No exact phrases matched the current highlighting rules. The AI can still assess overall wording; no phrase-level model explanation is available."}</p>
+      <div class="annotated-email" role="region" aria-label="Read-only email with highlighted warning phrases">${html}</div>
+      <p class="highlight-note">This is a read-only copy. Edit the original email on the left and select Check this email to update the analysis. Links cannot be opened here.</p>
+    </details>`;
+}
+
 /* ---------- render ---------- */
 let last = null;
-function render(res, live) {
+function render(res, live, email) {
   const L = LEVELS[res.risk_level] || LEVELS.Medium;
   const pct = Math.round(res.scam_probability * 100);
   const card = $("result");
+  const warningItems = getWarningItems(res);
   card.className = "card result fresh lv-" + res.risk_level;
   card.innerHTML = `
     <div class="verdict">
@@ -253,7 +462,12 @@ function render(res, live) {
     <div class="result-body">
       <div>
         <h3>Why we think this</h3>
-        <ul class="list reasons">${res.reasons.map((r) => `<li><svg class="tone" width="22" height="22" aria-hidden="true"><use href="#i-flag"/></svg><span>${esc(r)}</span></li>`).join("")}</ul>
+        <p class="warning-intro">Select any finding to learn why it matters and how to verify it.</p>
+        ${renderWarningCards(warningItems)}
+      </div>
+      <div class="evidence-section">
+        <h3>Where we noticed it</h3>
+        ${renderEmailEvidence(warningItems, email)}
       </div>
       <div>
         <h3>What to do next</h3>
@@ -372,7 +586,7 @@ async function check(moveFocus) {
   const { data, live } = await callApi(text, sender);
   btn.disabled = false;
   btn.textContent = "Check this email";
-  render(data, live);
+  render(data, live, { body, subject, sender });
   if (moveFocus) {
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     $("result").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
