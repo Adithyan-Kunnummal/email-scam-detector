@@ -1,3 +1,6 @@
+/* Layout: quiet header + short intro, then two floating cards (input | verdict), stacked on phones.
+   Borders only where they carry meaning; depth comes from soft shadows and filled fields.
+   Risk is always colour + icon shape + word. 18px base text, 48px+ targets. */
 :root {
   --paper: #F4F6F6;
   --surface: #FFFFFF;
@@ -287,3 +290,25 @@ footer p { max-width: 75ch; }
 
 /* Avoid movement for users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) { .levels i { animation: none !important; } }
+
+/* ---------- Retained screenshot preview after OCR ---------- */
+.image-preview {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--field);
+}
+.image-preview-label { margin-bottom: 10px; font-weight: 700; }
+.image-preview img {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.image-preview-hint {
+  margin-top: 10px;
+  color: var(--ink-2);
+  font-size: .83rem;
+}

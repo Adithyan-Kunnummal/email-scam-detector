@@ -1,22 +1,20 @@
-
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Analyse a suspicious email by pasting its text or uploading a screenshot. See risk indicators and suggested next steps.">
   <title>Scam Email Checker</title>
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
-  <!-- External CSS -->
   <link rel="stylesheet" href="./style.css">
 
-  <!-- SOLID COLOURED RISK BARS -->
+  <!-- Risk-bar colour fix: your style.css refers to --risk-yellow,
+       --risk-orange and --risk-red, so define them here. The rules
+       below make the bars solid rather than just showing a glow. -->
   <style>
     :root {
       --risk-yellow: #FFE600;
@@ -24,7 +22,7 @@
       --risk-red: #FF3B30;
     }
 
-    /* Default inactive bar */
+    /* Default: solid muted track for levels not yet reached. */
     .result .levels i {
       display: block;
       width: 100%;
@@ -38,7 +36,7 @@
       transform: none !important;
     }
 
-    /* LOW: yellow */
+    /* Low: yellow; Medium: yellow + orange; High: all three. */
     .result.lv-Low .levels .s-Low i,
     .result.lv-Medium .levels .s-Low i,
     .result.lv-High .levels .s-Low i {
@@ -46,37 +44,26 @@
       box-shadow: 0 0 5px rgba(255, 230, 0, .3);
     }
 
-    /* MEDIUM: orange */
     .result.lv-Medium .levels .s-Medium i,
     .result.lv-High .levels .s-Medium i {
       background: var(--risk-orange);
       box-shadow: 0 0 5px rgba(255, 138, 0, .3);
     }
 
-    /* HIGH: red */
     .result.lv-High .levels .s-High i {
       background: var(--risk-red);
       box-shadow: 0 0 5px rgba(255, 59, 48, .35);
     }
 
-    /* Selected label colours */
-    .result.lv-Low .levels .s-Low.on {
-      color: var(--risk-yellow);
-    }
-
-    .result.lv-Medium .levels .s-Medium.on {
-      color: var(--risk-orange);
-    }
-
-    .result.lv-High .levels .s-High.on {
-      color: var(--risk-red);
-    }
+    .result.lv-Low .levels .s-Low.on { color: var(--risk-yellow); }
+    .result.lv-Medium .levels .s-Medium.on { color: var(--risk-orange); }
+    .result.lv-High .levels .s-High.on { color: var(--risk-red); }
   </style>
 </head>
 
 <body>
 
-<!-- SVG ICONS -->
+<!-- SVG Icons -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 
   <symbol id="i-high" viewBox="0 0 64 64">
@@ -156,7 +143,8 @@
 </svg>
 
 
-<!-- HEADER -->
+<!-- ================= HEADER ================= -->
+
 <header class="top">
   <div class="wrap">
 
@@ -176,7 +164,6 @@
       <button type="button" id="ts-std" aria-pressed="true">
         Normal text
       </button>
-
       <button type="button" id="ts-lg" aria-pressed="false">
         Large text
       </button>
@@ -186,7 +173,8 @@
 </header>
 
 
-<!-- INTRODUCTION -->
+<!-- ================= INTRODUCTION ================= -->
+
 <section class="intro">
   <div class="wrap">
 
@@ -227,16 +215,20 @@
 </section>
 
 
-<!-- MAIN CONTENT -->
+<!-- ================= MAIN WEBSITE ================= -->
+
 <main>
   <div class="wrap">
 
-    <!-- EMAIL INPUT CARD -->
+
+    <!-- ================= EMAIL INPUT CARD ================= -->
+
     <section class="card" aria-label="Check an email">
 
       <form id="form" class="form" novalidate>
 
-        <!-- INPUT TABS -->
+        <!-- Input Mode Tabs -->
+
         <div class="seg modes"
              role="tablist"
              aria-label="How do you want to add the email?">
@@ -273,7 +265,8 @@
         </div>
 
 
-        <!-- SCREENSHOT UPLOAD PANEL -->
+        <!-- ================= SCREENSHOT UPLOAD ================= -->
+
         <div id="pane-shot"
              role="tabpanel"
              aria-labelledby="tab-shot"
@@ -302,14 +295,15 @@
 
           </label>
 
-          <!-- Screenshot advice -->
+
+          <!-- Screenshot Advice -->
+
           <ul class="tips">
 
             <li>
               <svg width="16" height="16" aria-hidden="true">
                 <use href="#i-info"/>
               </svg>
-
               <span>
                 Crop to just the email. Screenshots can show
                 other private details.
@@ -320,7 +314,6 @@
               <svg width="16" height="16" aria-hidden="true">
                 <use href="#i-info"/>
               </svg>
-
               <span>
                 Screenshots hide the real address behind links,
                 so pasting the text gives a better check.
@@ -329,14 +322,17 @@
 
           </ul>
 
-          <!-- OCR progress -->
+
+          <!-- Uploaded screenshot stays visible after OCR completes -->
+          <div id="image-preview" class="image-preview" hidden>
+            <p class="image-preview-label">Uploaded screenshot</p>
+            <img id="thumb" alt="Preview of the uploaded email screenshot">
+            <p class="image-preview-hint">Compare this image with the extracted text below.</p>
+          </div>
+
+          <!-- OCR progress is hidden when reading finishes -->
           <div id="ocr" hidden>
-
-            <div class="shot-row">
-
-              <img id="thumb" alt="Your screenshot">
-
-              <div class="progress">
+            <div class="progress">
 
                 <span id="ocr-msg" aria-live="polite">
                   Reading the text in your screenshot…
@@ -346,13 +342,12 @@
                   <i id="ocr-bar"></i>
                 </div>
 
-              </div>
-
             </div>
-
           </div>
 
-          <!-- OCR error -->
+
+          <!-- OCR Error -->
+
           <div id="ocr-err"
                class="notice warn"
                role="alert"
@@ -369,13 +364,15 @@
         </div>
 
 
-        <!-- EMAIL TEXT PANEL -->
+        <!-- ================= EMAIL TEXT INPUT ================= -->
+
         <div id="pane-paste"
              role="tabpanel"
              aria-labelledby="tab-paste"
              class="form">
 
-          <!-- OCR success -->
+          <!-- OCR Success -->
+
           <div id="ocr-ok" class="notice info" hidden>
 
             <svg width="20" height="20" aria-hidden="true">
@@ -383,14 +380,15 @@
             </svg>
 
             <p>
-              <b>Check the text is right, then press Check.</b>
-              Reading screenshots can make mistakes,
-              so fix any wrong words below.
+              <b>Screenshot text extracted successfully.</b>
+              Please review the text below before checking it for scams.
             </p>
 
           </div>
 
-          <!-- Email body -->
+
+          <!-- Email Body -->
+
           <div class="field">
 
             <label for="body">Email text</label>
@@ -401,14 +399,15 @@
               aria-describedby="body-err"
               placeholder="Paste the whole email here, including any links."></textarea>
 
-            <span
-              id="body-err"
-              class="err"
-              role="alert"></span>
+            <span id="body-err"
+                  class="err"
+                  role="alert"></span>
 
           </div>
 
-          <!-- Sender and subject -->
+
+          <!-- Sender and Subject -->
+
           <div class="pair">
 
             <div class="field">
@@ -446,7 +445,8 @@
         </div>
 
 
-        <!-- ACTION BUTTONS -->
+        <!-- ================= ACTION BUTTONS ================= -->
+
         <div class="check-actions">
 
           <button
@@ -470,7 +470,8 @@
         </div>
 
 
-        <!-- SAMPLE EMAILS -->
+        <!-- ================= SAMPLE EMAILS ================= -->
+
         <div class="examples">
 
           <span>Try an example</span>
@@ -514,7 +515,8 @@
     </section>
 
 
-    <!-- RISK RESULTS CARD -->
+    <!-- ================= RISK RESULT CARD ================= -->
+
     <section
       class="card result"
       id="result"
@@ -544,7 +546,8 @@
 </main>
 
 
-<!-- FOOTER -->
+<!-- ================= FOOTER ================= -->
+
 <footer>
   <div class="wrap">
 
@@ -567,7 +570,8 @@
 </footer>
 
 
-<!-- JAVASCRIPT CONNECTION -->
+<!-- ================= JAVASCRIPT CONNECTION ================= -->
+
 <script src="./script.js" defer></script>
 
 </body>

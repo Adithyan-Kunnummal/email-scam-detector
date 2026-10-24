@@ -92,6 +92,7 @@ function ocrError(msg) {
 async function runOcr(file) {
   if (!file) return;
   const runId = ++ocrRunId;
+  $("image-preview").hidden = true; // Hide any previous image before processing a new one.
   if (!/^image\/(png|jpeg)$/.test(file.type)) return ocrError("That file isn't a PNG or JPG picture. Choose a screenshot instead.");
   if (file.size > 8 * 1024 * 1024) return ocrError("Please choose a screenshot smaller than 8 MB.");
   $("ocr-err").hidden = true; $("ocr-ok").hidden = true;
@@ -99,6 +100,7 @@ async function runOcr(file) {
   if (thumbUrl) URL.revokeObjectURL(thumbUrl);
   thumbUrl = URL.createObjectURL(file);
   $("thumb").src = thumbUrl;
+  $("image-preview").hidden = false; // Keep the image visible after OCR completes.
   $("ocr-msg").textContent = "Reading the text in your screenshot…";
   $("ocr-bar").style.width = "4%";
   try {
@@ -304,6 +306,7 @@ function clearForm() {
   $("ocr").hidden = true;
   $("ocr-err").hidden = true;
   $("ocr-ok").hidden = true;
+  $("image-preview").hidden = true; // Remove the preview when Clear is clicked.
   $("ocr-bar").style.width = "0";
   if (thumbUrl) URL.revokeObjectURL(thumbUrl);
   thumbUrl = null;
