@@ -6,9 +6,15 @@ Backend API the web app calls.
   POST http://localhost:8000/check   {"text": "subject + email content", "sender": "optional@address"}
   http://localhost:8000              the web page (frontend/)
 
-Uses ./scam_model (DistilBERT) if present and torch is installed, otherwise baseline_model.joblib.
-email_features.py must sit next to this file: it cleans the pasted text and turns the
-sender address into warning signs exactly as during training.
+How a check works:
+  - the MODEL reads only the email content (subject + body) and gives a scam probability.
+    It uses ./scam_model (DistilBERT) if present and torch is installed, otherwise
+    baseline_model.joblib.
+  - RULE-BASED CHECKS look for warning signs in the sender address, the links and the
+    wording, including a lookalike-domain check against official_domains.txt.
+  - a lookalike sender or link makes the result High; otherwise each warning sign adds
+    a little to the model's probability before the Low / Medium / High cut-offs.
+email_features.py, domain_check.py and official_domains.txt must sit next to this file.
 Explanations are template-based, so the prototype needs no paid API.
 """
 import os
@@ -26,6 +32,13 @@ BASELINE_PATH = os.environ.get("BASELINE_MODEL", "baseline_model.joblib")
 
 MAX_TEXT_CHARS = 20_000
 
+# Low / Medium / High cut-offs on (model probability + SIGN_WEIGHT per warning sign).
+# DistilBERT's cut-offs were chosen on the validation split (tune_thresholds.py,
+# PROJECT_CONTEXT.md section 5e). The baseline scores many genuine modern emails 0.2-0.5,
+# so it keeps the higher Medium cut-off.
+HIGH_CUTOFF, SIGN_WEIGHT = 0.7, 0.05
+MEDIUM_CUTOFFS = {"distilbert": 0.2, "baseline": 0.4}
+
 # ---------- load the classifier ----------
 MODEL_USED = None
 if os.path.isdir(MODEL_DIR):
@@ -34,43 +47,56 @@ if os.path.isdir(MODEL_DIR):
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
         _tok = AutoTokenizer.from_pretrained(MODEL_DIR)
         _model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR).eval()
-        # Models saved by the current train_distilbert.py read (sender description, body)
-        # pairs and include input_format.json; older ones read the body only.
-        _PAIR_INPUT = os.path.exists(os.path.join(MODEL_DIR, "input_format.json"))
 
-        def scam_probability(body: str, sender: str) -> float:
-            if _PAIR_INPUT:
-                enc = _tok(ef.sender_description(sender), body, truncation="only_second",
-                           max_length=256, return_tensors="pt")
-            else:
-                enc = _tok(body, truncation=True, max_length=256, return_tensors="pt")
+        def scam_probability(body: str) -> float:
+            enc = _tok(body, truncation=True, max_length=256, return_tensors="pt")
             with torch.no_grad():
                 probs = torch.softmax(_model(**enc).logits, dim=-1)[0]
             return float(probs[1])          # index 1 = "scam"
-        MODEL_USED = "distilbert" if _PAIR_INPUT else "distilbert (body only)"
+        MODEL_USED = "distilbert"
     except ImportError as e:            # torch / transformers not installed: use the baseline
         print(f"Found {MODEL_DIR} but could not load it ({e}); using {BASELINE_PATH} instead.")
 
 if MODEL_USED is None:
     import joblib
-    import pandas as pd
     _clf = joblib.load(BASELINE_PATH)
 
-    def scam_probability(body: str, sender: str) -> float:
-        row = pd.DataFrame({"email_address": [sender], "body": [body]})
-        return float(_clf.predict_proba(row)[0][1])
+    def scam_probability(body: str) -> float:
+        return float(_clf.predict_proba([body])[0][1])
     MODEL_USED = "baseline"
+MEDIUM_CUTOFF = MEDIUM_CUTOFFS[MODEL_USED]
 
 # ---------- rule-based warning signs (produce the reasons users see) ----------
 URL_RE = re.compile(r"https?://[^\s<>\"')]+", re.I)
-TRUSTED = {"ato", "mygov", "auspost", "centrelink", "servicesaustralia", "commbank",
-           "westpac", "anz", "nab", "rmit", "homeaffairs"}
 URGENCY = ["urgent", "immediately", "within 24 hours", "suspended", "verify your",
            "final notice", "act now", "account will be", "locked"]
 MONEY = ["gift card", "bitcoin", "crypto", "refund", "payment", "bank details",
          "wire", "fee", "overdue"]
 CREDENTIALS = ["password", "sign in", "log in", "login", "confirm your details", "security code"]
+# Genuine emails often say "we will never ask for your password"; that is not a request
+SAFE_CREDENTIAL_PHRASES = re.compile(r"(never|not|won't|will not) (ever )?(ask|request)[^.]{0,40}"
+                                     r"(password|log ?in|sign in|security code|netcode|pin)")
 GOV_WORDS = ("ato", "mygov", "centrelink", "medicare", "home affairs")
+# Scam types the model misses because the training data has few examples of them
+# (PROJECT_CONTEXT 5b, 5e): investment, job and gift-card payment scams.
+INVESTMENT = re.compile(r"guaranteed (returns?|profits?|income)|risk[- ]free (investment|returns?|profit)"
+                        r"|crypto(currency)? (trading|investment|platform)|trading (platform|bot|signals?)"
+                        r"|double your (money|investment)|investment opportunity|passive income"
+                        r"|returns? of \d+ ?%|(made|earned|making|earning) \$[\d,]+ (last|this|a|per|in) "
+                        r"(week|month|day)|account manager will guide")
+JOB = re.compile(r"(earn|make|paid) (up to )?\$[\d,]+ ?(/|per|a|an|each) ?(day|week|hour|task)"
+                 r"|work (from|at) home[^.]{0,60}(earn|\$)|no experience (needed|required|necessary)"
+                 r"|(rating|reviewing|liking) (products|videos|hotels|apps)|task[- ]based (job|work)")
+OFF_PLATFORM = re.compile(r"(message|contact|text|add|chat with|reach) (us|me|our( [a-z]+){1,2})? ?(on|via) "
+                          r"(whatsapp|telegram|signal|wechat)")
+GIFT_CARD_PAYMENT = re.compile(r"(pay|paid|payment|purchase|buy)[^.]{0,40}gift ?cards?|gift ?card (codes?|numbers?)")
+PRIZE = re.compile(r"you('ve| have) (won|been selected)|congratulations[^.]{0,40}(won|winner|selected)"
+                   r"|claim your (prize|reward|winnings|voucher)|lottery winner")
+FAMILY = re.compile(r"\b(hi|hey) (mum|mom|dad)\b[^.]{0,80}(new number|broke|lost)|this is my new number"
+                    r"|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)")
+LOOKALIKE_FLAGS = {"lookalike_link", "lookalike_sender"}
+# Each of these is a strong sign on its own: at least Medium, and two together make High.
+STRONG_FLAGS = {"investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation"}
 
 
 def signals(text: str, sender: str) -> dict[str, str]:
@@ -86,22 +112,39 @@ def signals(text: str, sender: str) -> dict[str, str]:
         add("urgency", "It pressures you to act quickly, a common scam tactic.")
     if any(k in t for k in MONEY):
         add("money", "It mentions money, refunds or payment.")
-    if any(k in t for k in CREDENTIALS):
+    if any(k in SAFE_CREDENTIAL_PHRASES.sub("", t) for k in CREDENTIALS):
         add("credentials", "It asks you to sign in or share login details.")
+    if GIFT_CARD_PAYMENT.search(t):
+        add("gift_card_payment", "It asks for payment with gift cards. Real organisations never do this.")
+    if INVESTMENT.search(t):
+        add("investment", "It promises easy or guaranteed money from investing, a sign of investment scams.")
+    if JOB.search(t):
+        add("job", "It offers easy money for simple work, a sign of job scams.")
+    if OFF_PLATFORM.search(t):
+        add("off_platform", "It asks you to continue the conversation on WhatsApp, Telegram or a similar app.")
+    if PRIZE.search(t):
+        add("prize", "It says you have won or been selected for a prize, a common scam hook.")
+    if FAMILY.search(t):
+        add("family_impersonation", "It claims to be a family member with a new number. Call them on "
+                                    "the number you already have before doing anything.")
     for url in URL_RE.findall(text):
-        host = re.sub(r"^https?://", "", url.lower()).split("/")[0]
-        if re.fullmatch(r"[\d.]+(:\d+)?", host):
+        host = re.split(r"[/?#:]", re.sub(r"^https?://", "", url.lower()))[0]
+        if re.fullmatch(r"[\d.]+", host):
             add("raw_ip_link", "A link goes to a raw number address instead of a website name.")
-        elif any(b in host for b in TRUSTED) and not host.endswith((".gov.au", ".com.au", ".edu.au")):
-            add("lookalike_link", f"A link mentions a trusted brand but goes to '{host}'.")
+            continue
+        d = ef.check_domain(host)
+        if d["verdict"] == "lookalike":
+            add("lookalike_link", f"A link goes to '{host}', which imitates the real address "
+                                  f"{d['imitates']}.")
     addr = ef.parse_address(sender)
     if addr:
         domain = addr.split("@")[1]
         f = ef.sender_features(addr)
-        if any(re.search(rf"\b{w}\b", t) for w in GOV_WORDS) and not domain.endswith(".gov.au"):
+        if f["lookalike_domain"]:
+            add("lookalike_sender", f"The sender's address ('{domain}') imitates the real address "
+                                    f"{ef.check_domain(domain)['imitates']}.")
+        elif any(re.search(rf"\b{w}\b", t) for w in GOV_WORDS) and not domain.endswith(".gov.au"):
             add("fake_gov_sender", f"It claims to be from government but was sent from '{domain}'.")
-        if f["brand_on_unofficial_domain"]:
-            add("brand_sender", f"The sender uses a well-known brand name on an unofficial domain ('{domain}').")
         if f["suspicious_domain_ending"]:
             add("suspicious_domain_ending",
                 f"The sender's domain ending (.{domain.rsplit('.', 1)[1]}) is common in scams.")
@@ -111,12 +154,17 @@ def signals(text: str, sender: str) -> dict[str, str]:
     return found
 
 
-def risk_level(p: float, n_signals: int) -> str:
-    # Placeholder thresholds: tune these on validation data in the evaluation phase.
-    score = min(1.0, p + 0.05 * n_signals)
-    if score >= 0.7:
+def risk_level(p: float, n_signals: int, lookalike: bool = False, n_strong: int = 0) -> str:
+    # A sender or link imitating a known organisation's address is treated as High on its
+    # own: genuine organisations do not send from lookalike addresses.
+    if lookalike or n_strong >= 2:
         return "High"
-    if score >= 0.4:
+    score = min(1.0, p + SIGN_WEIGHT * n_signals)
+    if score >= HIGH_CUTOFF:
+        return "High"
+    # A strong sign (investment, job, gift-card payment ...) is never Low, because the model
+    # has seen too few of these scams to score them reliably.
+    if score >= MEDIUM_CUTOFF or n_strong:
         return "Medium"
     return "Low"
 
@@ -147,9 +195,10 @@ def check(email: EmailIn):
     body = ef.clean_text(email.text)       # same cleaning as the training data
     if not body:
         raise HTTPException(status_code=422, detail="The email text is empty.")
-    p = scam_probability(body, sender)
+    p = scam_probability(body)             # model: email content only
     found = signals(email.text, sender)    # rules read the original text (links intact)
-    level = risk_level(p, len(found))
+    level = risk_level(p, len(found), lookalike=bool(LOOKALIKE_FLAGS & found.keys()),
+                       n_strong=len(STRONG_FLAGS & found.keys()))
     return {
         "risk_level": level,
         "scam_probability": round(p, 3),

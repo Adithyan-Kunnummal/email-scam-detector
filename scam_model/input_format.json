@@ -1,0 +1,8 @@
+{
+  "input": "email content (subject + body), cleaned with email_features.clean_text",
+  "max_length": 256,
+  "labels": {
+    "0": "not scam",
+    "1": "scam"
+  }
+}

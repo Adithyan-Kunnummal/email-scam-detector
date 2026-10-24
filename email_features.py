@@ -4,17 +4,16 @@ Shared email processing for the scam email checker.
 Used by prepare_data.py, train_baseline.py, train_distilbert.py and app.py, so
 training data and emails pasted into the app are processed in exactly the same way.
 
-Dataset format (data.csv):
-    email_address  sender's email address, e.g. "alerts@mygov-secure.xyz" (may be blank)
-    body           subject + email content, already cleaned with clean_text()
-    label          "scam" or "not scam"
+Training data format (data.csv / data_combined.csv):
+    body    subject + email content
+    label   "scam" or "not scam"
 
-Why the address is turned into general warning signs instead of being given to
-the model as-is: in the public datasets, legitimate senders are mostly a few
-organisations and mailing lists (enron.com, samba.org, python.org ...). A model
-fed raw domains learns "enron.com = safe", which says nothing about the emails
-our users receive. Features like "free webmail" or "random-looking name" carry
-over to any sender.
+The model reads only the email content. The sender address is never used for
+training: it is checked at run time by the rule-based checks in app.py
+(sender_features() and check_domain() below), because in the public datasets
+legitimate senders are mostly a few organisations and mailing lists (enron.com,
+samba.org ...), so a model trained on addresses would learn shortcuts that say
+nothing about the emails our users receive.
 """
 import re
 from email.header import decode_header, make_header
@@ -37,19 +36,20 @@ def to_binary_label(value) -> int:
 
 
 # ---------------------------------------------------------------- loading a dataset
-REQUIRED_COLUMNS = ("email_address", "body", "label")
+REQUIRED_COLUMNS = ("body", "label")
 
 
 def load_dataset(path, clean=True, min_chars=20, verbose=True):
-    """Read any CSV with columns email_address, body, label and prepare it for training.
+    """Read a training CSV with columns body, label.
 
-    - column names are matched ignoring case and surrounding spaces; extra columns are ignored
-    - email_address may be blank or in "Name <address>" form
+    The model reads only the email content. Sender addresses are handled by the rule-based
+    checks in app.py, so any other columns (e.g. an email_address column) are ignored.
+    - column names are matched ignoring case and surrounding spaces
     - label may be scam / not scam (also 1 / 0, phishing, fraud, legit, legitimate, ham, safe)
     - body is cleaned with clean_text() unless clean=False, so training text matches what
       app.py sees; running it on already-cleaned text is harmless
     - rows with a body under `min_chars` characters and duplicate bodies are dropped
-    Returns a DataFrame with email_address, body, label (original text) and y (1 = scam, 0 = not).
+    Returns a DataFrame with body, label (original text) and y (1 = scam, 0 = not scam).
     """
     import pandas as pd
     df = pd.read_csv(path, keep_default_na=False, dtype=str, encoding_errors="replace")
@@ -64,7 +64,6 @@ def load_dataset(path, clean=True, min_chars=20, verbose=True):
         raise SystemExit(f"{path}: unrecognised label value(s) {bad[:10]}. "
                          f"Use 'scam' / 'not scam' (or 1 / 0).")
     df["y"] = df["label"].map(to_binary_label)
-    df["email_address"] = df["email_address"].str.strip()
     n0 = len(df)
     if clean:
         df["body"] = df["body"].map(clean_text)
@@ -73,8 +72,7 @@ def load_dataset(path, clean=True, min_chars=20, verbose=True):
     df = df.drop_duplicates(subset="body").reset_index(drop=True)
     if verbose:
         print(f"{path}: {n0} rows -> {len(df)} used ({n0 - n1} too short, {n1 - len(df)} duplicates); "
-              f"{int(df['y'].sum())} scam ({df['y'].mean():.0%}), {int((df['y'] == 0).sum())} not scam; "
-              f"{(df['email_address'] != '').mean():.0%} with a sender address")
+              f"{int(df['y'].sum())} scam ({df['y'].mean():.0%}), {int((df['y'] == 0).sum())} not scam")
         if not 0.15 <= df["y"].mean() <= 0.85:
             print("  Warning: classes are very unbalanced; watch recall on the scam class.")
     return df
@@ -157,6 +155,40 @@ BRANDS = {
 }
 
 
+_CHECKER = None
+
+
+def domain_checker():
+    """Lookalike-domain checker built from official_domains.txt (next to this file).
+    Returns None if the file is missing; the BRANDS heuristic is used instead."""
+    global _CHECKER
+    if _CHECKER is None:
+        import os
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "official_domains.txt")
+        if not os.path.exists(path):
+            _CHECKER = False
+        else:
+            from domain_check import DomainChecker
+            with open(path, encoding="utf-8") as f:
+                _CHECKER = DomainChecker(l.strip() for l in f if l.strip() and not l.startswith("#"))
+    return _CHECKER or None
+
+
+def check_domain(domain: str) -> dict:
+    """{'verdict': 'official' | 'lookalike' | 'unrelated' | 'unknown', 'imitates', 'reason'}"""
+    dc = domain_checker()
+    if dc is not None:
+        return dc.check(domain)
+    tokens = set(re.split(r"[.\-]", domain.lower()))
+    for b, official in BRANDS.items():
+        if b in tokens:
+            if any(domain == o or domain.endswith("." + o) for o in official):
+                return {"verdict": "official", "imitates": None, "reason": ""}
+            return {"verdict": "lookalike", "imitates": official[0],
+                    "reason": f"{domain} uses the brand name {b} on an unofficial address."}
+    return {"verdict": "unrelated", "imitates": None, "reason": ""}
+
+
 def parse_address(raw) -> str:
     """'Ann Garcia <AnGarcia@mcoe.org>' -> 'angarcia@mcoe.org'. Returns '' if none."""
     if raw is None or str(raw).strip() in {"", "nan"}:
@@ -177,7 +209,7 @@ def parse_address(raw) -> str:
 #    (legitimate), but real phishing often uses subdomain tricks.
 SENDER_FEATURES = [
     "has_sender", "free_webmail", "many_digits_in_name", "suspicious_domain_ending",
-    "hyphen_or_digits_in_domain", "brand_on_unofficial_domain",
+    "hyphen_or_digits_in_domain", "lookalike_domain",
 ]
 
 
@@ -189,43 +221,11 @@ def sender_features(address) -> dict:
         return f
     local, domain = addr.split("@", 1)
     labels = domain.split(".")
-    tokens = set(re.split(r"[.\-]", domain))
     f["has_sender"] = 1
     f["free_webmail"] = int(domain in FREE_WEBMAIL)
     f["many_digits_in_name"] = int(sum(c.isdigit() for c in local) >= 4)
     f["suspicious_domain_ending"] = int(labels[-1] in SUSPICIOUS_TLDS)
     f["hyphen_or_digits_in_domain"] = int(bool(re.search(r"[-\d]", ".".join(labels[:-1]))))
-    f["brand_on_unofficial_domain"] = int(any(
-        b in tokens and not any(domain == o or domain.endswith("." + o) for o in official)
-        for b, official in BRANDS.items()))
+    # imitates a known brand's official domain (see domain_check.py / official_domains.txt)
+    f["lookalike_domain"] = int(check_domain(domain)["verdict"] == "lookalike")
     return f
-
-
-def sender_matrix(addresses) -> np.ndarray:
-    """For scikit-learn: list/Series of addresses -> (n, len(SENDER_FEATURES)) array."""
-    if hasattr(addresses, "to_numpy"):
-        addresses = addresses.to_numpy().ravel()
-    return np.array([[sender_features(a)[k] for k in SENDER_FEATURES] for a in addresses], dtype=float)
-
-
-def sender_feature_names(transformer=None, input_features=None):
-    """Feature names for scikit-learn's FunctionTransformer(feature_names_out=...)."""
-    return np.array(SENDER_FEATURES, dtype=object)
-
-
-_PHRASES = {
-    "free_webmail": "free webmail address",
-    "many_digits_in_name": "many digits in name",
-    "suspicious_domain_ending": "unusual domain ending",
-    "hyphen_or_digits_in_domain": "hyphen or digits in domain",
-    "brand_on_unofficial_domain": "brand name on an unofficial domain",
-}
-
-
-def sender_description(address) -> str:
-    """For DistilBERT: a short, domain-free description of the sender."""
-    f = sender_features(address)
-    if not f["has_sender"]:
-        return "sender not provided"
-    signs = [p for k, p in _PHRASES.items() if f[k]]
-    return "sender: " + ("; ".join(signs) if signs else "no warning signs")
