@@ -1,21 +1,82 @@
+
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Analyse a suspicious email by pasting its text or uploading a screenshot. See risk indicators and suggested next steps.">
   <title>Scam Email Checker</title>
 
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
+  <!-- External CSS -->
   <link rel="stylesheet" href="./style.css">
+
+  <!-- SOLID COLOURED RISK BARS -->
+  <style>
+    :root {
+      --risk-yellow: #FFE600;
+      --risk-orange: #FF8A00;
+      --risk-red: #FF3B30;
+    }
+
+    /* Default inactive bar */
+    .result .levels i {
+      display: block;
+      width: 100%;
+      height: 12px;
+      border: 0;
+      outline: 0;
+      border-radius: 999px;
+      background: #354249;
+      box-shadow: none;
+      animation: none !important;
+      transform: none !important;
+    }
+
+    /* LOW: yellow */
+    .result.lv-Low .levels .s-Low i,
+    .result.lv-Medium .levels .s-Low i,
+    .result.lv-High .levels .s-Low i {
+      background: var(--risk-yellow);
+      box-shadow: 0 0 5px rgba(255, 230, 0, .3);
+    }
+
+    /* MEDIUM: orange */
+    .result.lv-Medium .levels .s-Medium i,
+    .result.lv-High .levels .s-Medium i {
+      background: var(--risk-orange);
+      box-shadow: 0 0 5px rgba(255, 138, 0, .3);
+    }
+
+    /* HIGH: red */
+    .result.lv-High .levels .s-High i {
+      background: var(--risk-red);
+      box-shadow: 0 0 5px rgba(255, 59, 48, .35);
+    }
+
+    /* Selected label colours */
+    .result.lv-Low .levels .s-Low.on {
+      color: var(--risk-yellow);
+    }
+
+    .result.lv-Medium .levels .s-Medium.on {
+      color: var(--risk-orange);
+    }
+
+    .result.lv-High .levels .s-High.on {
+      color: var(--risk-red);
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- SVG Icons -->
+<!-- SVG ICONS -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 
   <symbol id="i-high" viewBox="0 0 64 64">
@@ -95,8 +156,7 @@
 </svg>
 
 
-<!-- ================= HEADER ================= -->
-
+<!-- HEADER -->
 <header class="top">
   <div class="wrap">
 
@@ -116,6 +176,7 @@
       <button type="button" id="ts-std" aria-pressed="true">
         Normal text
       </button>
+
       <button type="button" id="ts-lg" aria-pressed="false">
         Large text
       </button>
@@ -125,8 +186,7 @@
 </header>
 
 
-<!-- ================= INTRODUCTION ================= -->
-
+<!-- INTRODUCTION -->
 <section class="intro">
   <div class="wrap">
 
@@ -167,20 +227,16 @@
 </section>
 
 
-<!-- ================= MAIN WEBSITE ================= -->
-
+<!-- MAIN CONTENT -->
 <main>
   <div class="wrap">
 
-
-    <!-- ================= EMAIL INPUT CARD ================= -->
-
+    <!-- EMAIL INPUT CARD -->
     <section class="card" aria-label="Check an email">
 
       <form id="form" class="form" novalidate>
 
-        <!-- Input Mode Tabs -->
-
+        <!-- INPUT TABS -->
         <div class="seg modes"
              role="tablist"
              aria-label="How do you want to add the email?">
@@ -217,8 +273,7 @@
         </div>
 
 
-        <!-- ================= SCREENSHOT UPLOAD ================= -->
-
+        <!-- SCREENSHOT UPLOAD PANEL -->
         <div id="pane-shot"
              role="tabpanel"
              aria-labelledby="tab-shot"
@@ -247,15 +302,14 @@
 
           </label>
 
-
-          <!-- Screenshot Advice -->
-
+          <!-- Screenshot advice -->
           <ul class="tips">
 
             <li>
               <svg width="16" height="16" aria-hidden="true">
                 <use href="#i-info"/>
               </svg>
+
               <span>
                 Crop to just the email. Screenshots can show
                 other private details.
@@ -266,6 +320,7 @@
               <svg width="16" height="16" aria-hidden="true">
                 <use href="#i-info"/>
               </svg>
+
               <span>
                 Screenshots hide the real address behind links,
                 so pasting the text gives a better check.
@@ -274,9 +329,7 @@
 
           </ul>
 
-
-          <!-- OCR Progress -->
-
+          <!-- OCR progress -->
           <div id="ocr" hidden>
 
             <div class="shot-row">
@@ -299,9 +352,7 @@
 
           </div>
 
-
-          <!-- OCR Error -->
-
+          <!-- OCR error -->
           <div id="ocr-err"
                class="notice warn"
                role="alert"
@@ -318,15 +369,13 @@
         </div>
 
 
-        <!-- ================= EMAIL TEXT INPUT ================= -->
-
+        <!-- EMAIL TEXT PANEL -->
         <div id="pane-paste"
              role="tabpanel"
              aria-labelledby="tab-paste"
              class="form">
 
-          <!-- OCR Success -->
-
+          <!-- OCR success -->
           <div id="ocr-ok" class="notice info" hidden>
 
             <svg width="20" height="20" aria-hidden="true">
@@ -341,9 +390,7 @@
 
           </div>
 
-
-          <!-- Email Body -->
-
+          <!-- Email body -->
           <div class="field">
 
             <label for="body">Email text</label>
@@ -354,15 +401,14 @@
               aria-describedby="body-err"
               placeholder="Paste the whole email here, including any links."></textarea>
 
-            <span id="body-err"
-                  class="err"
-                  role="alert"></span>
+            <span
+              id="body-err"
+              class="err"
+              role="alert"></span>
 
           </div>
 
-
-          <!-- Sender and Subject -->
-
+          <!-- Sender and subject -->
           <div class="pair">
 
             <div class="field">
@@ -400,8 +446,7 @@
         </div>
 
 
-        <!-- ================= ACTION BUTTONS ================= -->
-
+        <!-- ACTION BUTTONS -->
         <div class="check-actions">
 
           <button
@@ -425,8 +470,7 @@
         </div>
 
 
-        <!-- ================= SAMPLE EMAILS ================= -->
-
+        <!-- SAMPLE EMAILS -->
         <div class="examples">
 
           <span>Try an example</span>
@@ -470,8 +514,7 @@
     </section>
 
 
-    <!-- ================= RISK RESULT CARD ================= -->
-
+    <!-- RISK RESULTS CARD -->
     <section
       class="card result"
       id="result"
@@ -501,8 +544,7 @@
 </main>
 
 
-<!-- ================= FOOTER ================= -->
-
+<!-- FOOTER -->
 <footer>
   <div class="wrap">
 
@@ -525,34 +567,8 @@
 </footer>
 
 
-<!-- ================= JAVASCRIPT CONNECTION ================= -->
-
+<!-- JAVASCRIPT CONNECTION -->
 <script src="./script.js" defer></script>
 
 </body>
 </html>
-
-After replacing the code
-To finish resolving your merge conflict in VS Code:
-
-Open frontend/index.html, replace the entire contents with the code above, and press Ctrl + S.
-
-Open a VS Code terminal and run:
-
-git add frontend/index.html
-
-Run git status and check that there are no remaining unmerged files.
-
-In Source Control, click Continue to finish the merge.
-
-Once the merge completes, sync your changes with GitHub.
-
-Your existing style.css handles the glowing red/orange/yellow borders and coloured risk bars. Your script.js handles the AI response, screenshot OCR and buttons. You do not need to put CSS or JavaScript inside the HTML file again.
-
-
-index.html
-HTML
-
-
-
-
