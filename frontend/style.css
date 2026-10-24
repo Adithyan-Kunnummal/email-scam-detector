@@ -1,3 +1,6 @@
+/* Layout: quiet header + short intro, then two floating cards (input | verdict), stacked on phones.
+   Borders only where they carry meaning; depth comes from soft shadows and filled fields.
+   Risk is always colour + icon shape + word. 18px base text, 48px+ targets. */
 :root {
   --paper: #F4F6F6;
   --surface: #FFFFFF;
@@ -174,9 +177,19 @@ textarea { min-height: 14rem; resize: vertical; line-height: 1.5; }
 .lv-High .verdict, .lv-Medium .verdict, .lv-Low .verdict {
   background: var(--surface);
 }
-.lv-High   .tone { color: var(--high); }
-.lv-Medium .tone { color: var(--med); }
-.lv-Low    .tone { color: var(--low); }
+/* Match risk heading and icon colours to the bars */
+
+.lv-High .tone {
+    color: #FF3B30;
+}
+
+.lv-Medium .tone {
+    color: #FF8A00;
+}
+
+.lv-Low .tone {
+    color: #FFE600;
+}
 
 /* Outline and glow the entire result card according to its category. */
 .result.lv-High {
@@ -287,3 +300,773 @@ footer p { max-width: 75ch; }
 
 /* Avoid movement for users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) { .levels i { animation: none !important; } }
+
+/* ---------- Retained screenshot preview after OCR ---------- */
+.image-preview {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--field);
+}
+.image-preview-label { margin-bottom: 10px; font-weight: 700; }
+.image-preview img {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.image-preview-hint {
+  margin-top: 10px;
+  color: var(--ink-2);
+  font-size: .83rem;
+}
+
+
+/* =========================================
+   HEADER AND TITLE ALIGNMENT
+   ========================================= */
+
+/* Centre the top header */
+.top .wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 75px;
+}
+
+/* Make Scam Email Checker larger */
+.top .brand {
+    font-size: 40px;
+    font-weight: 800;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Keep text-size buttons on the right */
+.top .seg {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Centre the introduction */
+.intro .wrap {
+    text-align: center;
+}
+
+/* Make the main heading slightly smaller */
+.intro h1 {
+    font-size: 32px;
+    line-height: 1.2;
+    max-width: 750px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Centre the description */
+.intro p {
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+/* Centre the privacy information badges */
+.intro .trust {
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+
+/* =====================================
+   PRIVACY BADGES — LIGHT BLUE OUTLINES
+   ===================================== */
+
+/* Container holding the three badges */
+.intro .trust {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* Individual privacy badges */
+.intro .trust li {
+    font-size: 15px;
+    font-weight: 600;
+
+    padding: 12px 18px;
+
+    background: #14252C;
+    color: #EAFBFF;
+
+    border: 2px solid #69DFFF;
+    border-radius: 999px;
+
+    box-shadow: 0 0 9px rgba(105, 223, 255, 0.22);
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    transition: border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+/* Light blue icons */
+.intro .trust li svg {
+    width: 19px;
+    height: 19px;
+    color: #69DFFF;
+    flex-shrink: 0;
+}
+
+/* Optional hover effect */
+.intro .trust li:hover {
+    border-color: #9DEBFF;
+    box-shadow: 0 0 15px rgba(105, 223, 255, 0.4);
+}
+
+
+/* ========================================
+   INITIAL RESULT SCREEN
+   ======================================== */
+
+.result .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 390px;
+    padding: 28px 18px;
+
+    text-align: center;
+    gap: 16px;
+
+    animation: emptyFadeIn 0.5s ease-out;
+}
+
+/* Shield icon */
+.empty-shield {
+    width: 85px;
+    height: 85px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #203C45;
+    color: #68C8D7;
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 0 25px rgba(104, 200, 215, 0.12);
+}
+
+.empty-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #68C8D7;
+}
+
+/* Main heading */
+.result .empty h2 {
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #F1F6F7;
+    margin: 0;
+}
+
+/* Description */
+.empty-description {
+    max-width: 390px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #B2C5CC;
+    margin: 0;
+}
+
+/* Divider */
+.empty-divider {
+    width: 100%;
+    height: 1px;
+    background: #2A424B;
+    margin: 8px 0;
+}
+
+/* Three-step layout */
+.empty-steps {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+/* Individual step */
+.empty-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    background: #1B3038;
+    border: 1px solid #2B454F;
+    border-radius: 12px;
+
+    padding: 15px 8px;
+
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease;
+}
+
+.empty-step:hover {
+    transform: translateY(-3px);
+    border-color: #68C8D7;
+    background: #213B44;
+}
+
+.empty-step-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 34px;
+    height: 34px;
+
+    border-radius: 50%;
+    background: rgba(104, 200, 215, 0.12);
+
+    color: #68C8D7;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.empty-step strong {
+    font-size: 12px;
+    color: #F1F6F7;
+}
+
+.empty-step small {
+    color: #96B0B8;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+/* Privacy note */
+.empty-privacy {
+    font-size: 11px;
+    color: #8EAAB3;
+    margin: 5px 0 0;
+}
+
+/* Entrance animation */
+@keyframes emptyFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+    .result .empty {
+        padding: 25px 12px;
+    }
+
+    .empty-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .empty-step {
+        padding: 12px;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .result .empty {
+        animation: none;
+    }
+
+    .empty-step {
+        transition: none;
+    }
+}
+
+
+/* ==========================================
+   BUTTON HOVER EFFECTS
+   ========================================== */
+
+/* Main CHECK THIS EMAIL button */
+.check-actions .btn-primary {
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        background-color 0.25s ease;
+}
+
+/* Strong cyan glow when hovered */
+.check-actions .btn-primary:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+
+    background-color: #79E1F0;
+
+    box-shadow:
+        0 0 14px rgba(104, 200, 215, 0.65),
+        0 0 30px rgba(104, 200, 215, 0.40),
+        0 8px 24px rgba(104, 200, 215, 0.25);
+
+    cursor: pointer;
+}
+
+/* Slight press effect when clicked */
+.check-actions .btn-primary:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+}
+
+
+/* ==========================================
+   CLEAR BUTTON HOVER
+   ========================================== */
+
+.check-actions .btn-soft {
+    transition:
+        transform 0.2s ease,
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.check-actions .btn-soft:hover {
+    transform: translateY(-2px);
+
+    background-color: #2B434C;
+
+    box-shadow: 0 0 12px rgba(104, 200, 215, 0.18);
+
+    cursor: pointer;
+}
+
+.check-actions .btn-soft:active {
+    transform: scale(0.97);
+}
+
+
+/* ==========================================
+   EXAMPLE BUTTON HOVER
+   ========================================== */
+
+.examples .chip {
+    transition:
+        transform 0.2s ease,
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        color 0.2s ease;
+}
+
+/* Hover effect for example buttons */
+.examples .chip:hover {
+    transform: translateY(-3px);
+
+    background-color: #203B44;
+
+    border-color: #68C8D7;
+
+    color: #A1F1FF;
+
+    box-shadow:
+        0 0 12px rgba(104, 200, 215, 0.30);
+
+    cursor: pointer;
+}
+
+/* Button press effect */
+.examples .chip:active {
+    transform: translateY(0) scale(0.96);
+}
+
+
+/* ==========================================
+   KEYBOARD ACCESSIBILITY
+   ========================================== */
+
+.check-actions .btn:focus-visible,
+.examples .chip:focus-visible {
+    outline: 2px solid #79E1F0;
+    outline-offset: 4px;
+}
+
+/* Disable motion for users who prefer less animation */
+@media (prefers-reduced-motion: reduce) {
+    .check-actions .btn,
+    .examples .chip {
+        transition: none;
+    }
+
+    .check-actions .btn:hover,
+    .examples .chip:hover {
+        transform: none;
+    }
+}
+
+
+/* ==========================================
+   FOOTER — FULL WIDTH AND BOTTOM SPACING
+   ========================================== */
+
+/* Make the page extend to the bottom */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Let the main content take available space */
+main {
+    flex: 1;
+}
+
+/* Footer position and spacing */
+footer {
+    width: 100%;
+    margin-top: auto;
+    padding: 20px 24px 12px;
+}
+
+/* Remove the narrow container width */
+footer .wrap {
+    width: 100%;
+    max-width: none;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* Allow longer lines of text */
+footer p {
+    width: 100%;
+    max-width: none;
+    margin: 0 0 8px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* Remove extra space below the last line */
+footer p:last-child {
+    margin-bottom: 0;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 650px) {
+    footer {
+        padding: 18px 14px 10px;
+    }
+}
+
+
+/* ==========================================
+   EXPLAINABLE WARNING CARDS + SAFE TEXT MARKS
+   ========================================== */
+.warning-intro {
+  color: var(--ink-2);
+  font-size: .82rem;
+  line-height: 1.45;
+  margin: -4px 0 13px;
+}
+.warning-cards { display: grid; gap: 10px; }
+.warning-card {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--field);
+  overflow: hidden;
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.warning-card:hover, .warning-card[open] { border-color: rgba(104, 200, 215, .66); }
+.warning-card > summary {
+  color: var(--ink);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 12px;
+  line-height: 1.4;
+  min-height: 60px;
+  cursor: pointer;
+}
+.warning-card > summary:hover { background: rgba(104, 200, 215, .065); }
+.warning-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: rgba(255, 79, 94, .17);
+  color: #FF817C;
+  font: 700 .86rem var(--f-body);
+}
+.warning-neutral .warning-symbol {
+  background: rgba(104, 200, 215, .13);
+  color: var(--accent);
+}
+.warning-heading { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.warning-heading strong { font-size: .89rem; font-weight: 700; color: var(--ink); }
+.warning-heading > span { font-size: .81rem; color: var(--ink-2); font-weight: 400; overflow-wrap: anywhere; }
+.warning-chevron { flex: 0 0 18px; margin: 4px 0 0; color: var(--accent); }
+.warning-card-content {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 15px 50px;
+  display: grid;
+  gap: 10px;
+  font-size: .81rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.warning-card-content p strong { display: block; font-size: .79rem; color: var(--ink); margin-bottom: 2px; }
+
+.evidence-section { min-width: 0; }
+.highlight-review {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--field);
+  padding: 0;
+  overflow: hidden;
+}
+.highlight-review > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  color: var(--ink);
+  font-size: .87rem;
+  font-weight: 700;
+}
+.highlight-review > summary:hover { background: rgba(104, 200, 215, .07); }
+.highlight-review > summary svg { color: var(--accent); flex: 0 0 17px; }
+.evidence-count {
+  margin-left: auto;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: .68rem;
+  font-weight: 700;
+  background: rgba(104, 200, 215, .12);
+  color: var(--accent);
+}
+.highlight-note {
+  padding: 10px 14px 12px;
+  color: var(--ink-2);
+  font-size: .76rem;
+  line-height: 1.5;
+}
+.annotated-email {
+  max-height: 250px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface);
+  color: var(--ink);
+  margin: 0 12px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: .82rem;
+  line-height: 1.75;
+  user-select: text;
+}
+.evidence-mark {
+  padding: 1px 2px;
+  border-radius: 4px;
+  background: rgba(255, 138, 0, .27);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 138, 0, .7);
+  text-underline-offset: 3px;
+}
+.evidence-urgency, .evidence-credentials, .evidence-gift_card_payment, .evidence-sender {
+  background: rgba(255, 59, 48, .27);
+  text-decoration-color: #FF5C54;
+}
+.evidence-link, .evidence-raw_ip_link, .evidence-lookalike_link {
+  background: rgba(104, 200, 215, .24);
+  text-decoration-color: #68C8D7;
+}
+@media (max-width: 520px) {
+  .warning-card-content { padding-left: 14px; }
+  .warning-card > summary { gap: 8px; padding: 11px 10px; }
+  .annotated-email { max-height: 220px; font-size: .78rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .warning-card { transition: none; }
+}
+
+
+/* ==========================================
+   ACTUAL-STATUS ANIMATED SCANNING PANEL
+   ========================================== */
+.result.scanning {
+  border: 1px solid rgba(104, 200, 215, .55);
+  box-shadow: 0 0 24px rgba(104, 200, 215, .12);
+}
+.scan-shell {
+  min-height: 450px;
+  padding: 32px 28px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 15px;
+  text-align: center;
+  animation: scan-enter .28s ease-out both;
+}
+.scan-emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  color: #68C8D7;
+  background: rgba(104, 200, 215, .13);
+  border: 1px solid rgba(104, 200, 215, .28);
+  box-shadow: 0 0 24px rgba(104, 200, 215, .13);
+  animation: scan-pulse 1.9s ease-in-out infinite;
+}
+.scan-label {
+  font-size: .69rem;
+  font-weight: 700;
+  letter-spacing: .13em;
+  color: #68C8D7;
+}
+.scan-shell h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.8vw, 1.7rem);
+  color: var(--ink);
+}
+.scan-description {
+  color: var(--ink-2);
+  line-height: 1.5;
+  font-size: .86rem;
+  max-width: 36ch;
+  min-height: 2.8em;
+}
+.scan-progress-track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--field);
+  margin-top: 7px;
+}
+.scan-progress-track > span {
+  position: absolute;
+  width: 43%;
+  height: 100%;
+  left: -43%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(104, 200, 215, .25), #68C8D7, rgba(104, 200, 215, .75));
+  box-shadow: 0 0 14px rgba(104, 200, 215, .42);
+  animation: scan-indeterminate 1.7s ease-in-out infinite;
+}
+.scan-progress-caption {
+  font-size: .73rem;
+  color: var(--ink-2);
+}
+.scan-steps {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+  list-style: none;
+  margin: 5px 0;
+  padding: 0;
+  width: min(100%, 365px);
+}
+.scan-step {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 12px;
+  padding: 13px;
+  align-items: center;
+  background: var(--field);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  opacity: .62;
+  transition: border-color .2s ease, opacity .2s ease;
+}
+.scan-step.is-active { opacity: 1; border-color: rgba(104, 200, 215, .8); }
+.scan-step.is-done { opacity: 1; }
+.scan-step.is-skipped { opacity: .87; border-color: rgba(255, 181, 71, .6); }
+.scan-step-marker {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-2);
+  background: var(--surface);
+  font-size: .78rem;
+  font-weight: 700;
+}
+.scan-step.is-done .scan-step-marker { color: #092D32; background: #68C8D7; }
+.scan-step.is-active .scan-step-marker { background: rgba(104, 200, 215, .18); color: #68C8D7; }
+.scan-step.is-skipped .scan-step-marker { background: rgba(255,181,71,.16); color: #FFB547; }
+.scan-mini-spinner {
+  display: block;
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(104, 200, 215, .28);
+  border-top-color: #68C8D7;
+  border-radius: 50%;
+  animation: scan-spin .8s linear infinite;
+}
+.scan-step-copy { display: grid; gap: 1px; min-width: 0; }
+.scan-step-copy strong { font-size: .84rem; color: var(--ink); }
+.scan-step-copy small { font-size: .72rem; color: var(--ink-2); }
+.scan-privacy { color: var(--ink-2); font-size: .73rem; line-height: 1.5; max-width: 43ch; }
+@keyframes scan-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(104,200,215,.09); transform: scale(1); }
+  50% { box-shadow: 0 0 30px rgba(104,200,215,.22); transform: scale(1.035); }
+}
+@keyframes scan-indeterminate {
+  0% { left: -43%; }
+  100% { left: 100%; }
+}
+@keyframes scan-spin { to { transform: rotate(360deg); } }
+@keyframes scan-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 520px) {
+  .scan-shell { padding: 28px 16px; min-height: 415px; }
+  .scan-step { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-shell, .scan-emblem, .scan-progress-track > span, .scan-mini-spinner {
+    animation: none !important;
+  }
+  .scan-progress-track > span { left: 0; }
+  .scan-step { transition: none; }
+}
