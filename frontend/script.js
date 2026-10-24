@@ -35,6 +35,27 @@ const SAMPLES = {
     sender: "hr.recruit2026@gmail.com",
     subject: "Remote job offer - start today",
     body: "Hello,\n\nWe saw your resume online and think you are a great fit. Work from home 2 hours a day and earn $800/week rating products for online stores. No experience needed.\n\nMessage our HR team on WhatsApp to start today.\n\nRecruitment Team"
+  },
+  // Genuine emails (all rated Low by DistilBERT and by demo mode)
+  assignment: {
+    sender: "j.nguyen@rmit.edu.au",
+    subject: "Assignment 3 reminder",
+    body: "Hi everyone,\n\nJust a reminder that Assignment 3 is due on Friday 1 November at 11:59pm. Please submit your group's files through Canvas and make sure everyone's name is on the contribution sheet.\n\nI'll hold extra consultation hours on Wednesday from 2 to 4pm in building 80, level 4.\n\nSee you in the tutorial,\nJenny"
+  },
+  bill: {
+    sender: "accounts@agl.com.au",
+    subject: "Your AGL electricity bill is ready",
+    body: "Hi Alex,\n\nYour electricity bill for 1 August to 31 October is $214.36, due on 20 November.\n\nYou can view and pay your bill in the AGL app or at agl.com.au. If you have set up direct debit, there's nothing you need to do.\n\nThanks,\nAGL"
+  },
+  dentist: {
+    sender: "reception@brunswickdental.com.au",
+    subject: "Appointment reminder",
+    body: "Hi Maria,\n\nThis is a reminder of your appointment with Dr Chen on Monday 3 November at 10:30am.\n\nIf you need to reschedule, please call us on 03 9123 4567 at least a day before your appointment.\n\nKind regards,\nBrunswick Dental"
+  },
+  friend: {
+    sender: "sam.k.lee@gmail.com",
+    subject: "Dinner on Saturday?",
+    body: "Hey!\n\nAre we still on for dinner on Saturday? I booked a table at the Thai place on Sydney Road for 7pm.\n\nLet me know if you want me to pick you up on the way.\n\nSam"
   }
 };
 
@@ -694,10 +715,11 @@ async function check(moveFocus) {
     if (thisScan !== scanId) return;
     scanLoadingTimer = null;
     renderScanning(fromScreenshot);
-    if (moveFocus && window.innerWidth < 940) {
+    // The result card sits below the form, so bring the scanning panel into view
+    if (moveFocus) {
       $("result").scrollIntoView({
         behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-        block: "nearest"
+        block: "start"
       });
     }
   }, 250);

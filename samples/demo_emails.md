@@ -2,7 +2,9 @@
 
 Emails for the demo and walkthrough video, with the result the app gives using the DistilBERT
 model in `scam_model/` (checked 24 Oct 2026). Paste the subject and body into the text box and
-the sender into the sender field. The first six are also the "Try an example" buttons on the page.
+the sender into the sender field. Emails 1–6 are also "Try an example" buttons on the page, as
+are four more genuine emails (assignment reminder, electricity bill, dentist appointment, message
+from a friend), which all come out Low.
 
 These were written for the demo. They are not part of the training or test data, and the
 results are a sanity check, not an evaluation (see PROJECT_CONTEXT.md section 5e).

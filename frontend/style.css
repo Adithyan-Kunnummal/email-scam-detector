@@ -84,7 +84,9 @@ button { font: inherit; color: inherit; }
 
 /* ---------- main grid ---------- */
 main .wrap { display: grid; gap: 20px; padding-block: 0 56px; }
-@media (min-width: 940px) { main .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+/* One column: the email form, then the result below it (the page scrolls to the result) */
+main .wrap { max-width: 860px; }
+#result { scroll-margin-top: 16px; }   /* leave a small gap above the result when scrolled to it */
 .card { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 28px; min-width: 0; }
 @media (max-width: 520px) { .card { padding: 20px; border-radius: var(--r-md); } }
 
@@ -125,6 +127,7 @@ textarea { min-height: 14rem; resize: vertical; line-height: 1.5; }
 
 .examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .examples > span { font-size: 0.85rem; color: var(--ink-2); margin-right: 2px; }
+.examples + .examples { margin-top: -10px; }   /* keep the scam and genuine rows together */
 .chip {
   border: 1px solid var(--line); background: transparent; border-radius: 999px;
   min-height: 40px; padding: 0 14px; cursor: pointer; font-size: 0.85rem;

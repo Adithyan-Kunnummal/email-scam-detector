@@ -47,7 +47,7 @@ To force the baseline, run `SCAM_MODEL_DIR=none python -m uvicorn app:app` (Powe
 
 - **Paste text:** paste the email into the box. Adding the sender's address and subject is optional but gives better checks.
 - **Screenshot:** choose or drag in a PNG/JPG. The text is read in your browser with Tesseract.js, so the image never leaves your device. Check and correct the text, then press **Check this email**. The first use downloads Tesseract.js from a CDN, so you need an internet connection. Screenshots don't show the real address behind links, so pasted text gives a better check.
-- **Try an example:** six built-in samples (tax refund, missed parcel, visa fee, uni timetable, crypto tip, job offer). More are in `samples/demo_emails.md`.
+- **Try an example:** five scam samples (tax refund, missed parcel, visa fee, crypto tip, job offer) and five genuine ones (assignment reminder, electricity bill, dentist appointment, message from a friend, uni timetable). More are in `samples/demo_emails.md`.
 - The result shows the risk level as a colour, an icon **and** a word, the reasons, and next steps. The raw model score is only in the collapsible **Details** section. Other features: a large-text toggle, "Share with someone I trust" (copies a summary), and feedback buttons (saved in this browser only).
 - Nothing is stored on the server. Remove names and account numbers before checking.
 
