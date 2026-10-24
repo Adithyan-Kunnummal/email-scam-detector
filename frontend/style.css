@@ -322,3 +322,118 @@ footer p { max-width: 75ch; }
   color: var(--ink-2);
   font-size: .83rem;
 }
+
+
+/* =========================================
+   HEADER AND TITLE ALIGNMENT
+   ========================================= */
+
+/* Centre the top header */
+.top .wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 75px;
+}
+
+/* Make Scam Email Checker larger */
+.top .brand {
+    font-size: 40px;
+    font-weight: 800;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Keep text-size buttons on the right */
+.top .seg {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Centre the introduction */
+.intro .wrap {
+    text-align: center;
+}
+
+/* Make the main heading slightly smaller */
+.intro h1 {
+    font-size: 32px;
+    line-height: 1.2;
+    max-width: 750px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Centre the description */
+.intro p {
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+/* Centre the privacy information badges */
+.intro .trust {
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+
+/* =====================================
+   PRIVACY BADGES — LIGHT BLUE OUTLINES
+   ===================================== */
+
+/* Container holding the three badges */
+.intro .trust {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* Individual privacy badges */
+.intro .trust li {
+    font-size: 15px;
+    font-weight: 600;
+
+    padding: 12px 18px;
+
+    background: #14252C;
+    color: #EAFBFF;
+
+    border: 2px solid #69DFFF;
+    border-radius: 999px;
+
+    box-shadow: 0 0 9px rgba(105, 223, 255, 0.22);
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    transition: border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+/* Light blue icons */
+.intro .trust li svg {
+    width: 19px;
+    height: 19px;
+    color: #69DFFF;
+    flex-shrink: 0;
+}
+
+/* Optional hover effect */
+.intro .trust li:hover {
+    border-color: #9DEBFF;
+    box-shadow: 0 0 15px rgba(105, 223, 255, 0.4);
+}
+
+
+
