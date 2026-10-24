@@ -295,6 +295,31 @@ const WARNING_INFO = {
     why: "Scammers may pretend to be a relative using a new phone number to request immediate help or money.",
     check: "Call the person on a number you already know before responding."
   },
+  secret_request: {
+    title: "Password, PIN or code requested",
+    why: "Banks, government services and other genuine organisations never ask you to send a password, PIN or one-time code by email.",
+    check: "Never send these details. If you are worried about your account, contact the organisation through its official app or website."
+  },
+  lookalike_sender: {
+    title: "Sender imitates a trusted address",
+    why: "The sender's address is made to look like a known organisation's real address, for example with a changed letter or an extra word. Genuine organisations do not send from imitation addresses.",
+    check: "Do not reply or click links. Contact the organisation using contact details from its official website or app."
+  },
+  suspicious_domain_ending: {
+    title: "Unusual address ending",
+    why: "Endings such as .xyz or .top are cheap to register and often used by scammers. Some genuine sites use them too.",
+    check: "Check whether the organisation really uses this address before acting."
+  },
+  official_from_webmail: {
+    title: "Official message from a personal account",
+    why: "Banks, government services and companies send email from their own domains, not from free accounts like Gmail or Outlook.",
+    check: "Contact the organisation through its official website or app to confirm the message."
+  },
+  official_sender: {
+    title: "Sender address looks official",
+    why: "The sender's address belongs to the organisation and its links go to official websites, so this message may be genuine. That is why the result is not High. Sender addresses can still be faked.",
+    check: "Open the organisation's official app or type its web address yourself, rather than using links in the email."
+  },
   general: {
     title: "Additional analysis observation",
     why: "This observation comes from the email analysis. The interface cannot identify an exact supporting phrase for every model prediction.",
@@ -333,7 +358,8 @@ function getWarningItems(res) {
   return reasons.map((text, index) => {
     const inferred = inferWarningKey(text);
     const suggested = aligned ? flags[index] : null;
-    const key = inferred || (Object.hasOwn(WARNING_INFO, suggested) ? suggested : "general");
+    // The backend sends one flag per reason: use it when known, and guess from the text otherwise
+    const key = (Object.hasOwn(WARNING_INFO, suggested) ? suggested : null) || inferred || "general";
     return { key, text: String(text) };
   });
 }
@@ -342,7 +368,7 @@ function renderWarningCards(items) {
   return `<div class="warning-cards">
     ${items.map(({key, text}, index) => {
       const info = WARNING_INFO[key] || WARNING_INFO.general;
-      const neutral = key === "none";
+      const neutral = key === "none" || key === "official_sender";
       return `<details class="warning-card${neutral ? " warning-neutral" : ""}" ${index === 0 && !neutral ? "open" : ""}>
         <summary>
           <span class="warning-symbol" aria-hidden="true">${neutral ? "i" : "!"}</span>
