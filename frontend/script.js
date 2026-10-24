@@ -603,8 +603,11 @@ function feedback(btn) {
 /* ---------- clear the form and previous result ---------- */
 let scanId = 0;
 let scanAbort = null;
+let scanLoadingTimer = null; // Show the scanning panel only when the API takes longer than 250 ms.
 function clearForm() {
   scanId++; // Discard results arriving from a scan that was cleared.
+  clearTimeout(scanLoadingTimer); // Stop a pending loading screen from appearing after Clear.
+  scanLoadingTimer = null;
   if (scanAbort) scanAbort.abort();
   scanAbort = null;
   $("check").disabled = false;
@@ -656,16 +659,27 @@ async function check(moveFocus) {
   document.querySelectorAll("[data-sample]").forEach((b) => { b.disabled = true; });
   const text = subject ? subject + "\n\n" + body : body;
   const fromScreenshot = !$("ocr-ok").hidden;
-  renderScanning(fromScreenshot);
-  if (moveFocus && window.innerWidth < 940) {
-    $("result").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
-  }
+  // Avoid flashing the scanning panel when DistilBERT returns almost instantly.
+  // This is a 250 ms SHOW delay, not a delay to the model or its result.
+  scanLoadingTimer = setTimeout(() => {
+    if (thisScan !== scanId) return;
+    scanLoadingTimer = null;
+    renderScanning(fromScreenshot);
+    if (moveFocus && window.innerWidth < 940) {
+      $("result").scrollIntoView({
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "nearest"
+      });
+    }
+  }, 250);
   try {
     const { data, live } = await callApi(text, sender, scanAbort,
       () => { if (thisScan === scanId) scanningStage("response"); },
       () => { if (thisScan === scanId) scanningStage("fallback"); }
     );
     if (thisScan !== scanId) return; // User pressed Clear while the request was running.
+    clearTimeout(scanLoadingTimer); // If the API finished quickly, never display the scanning panel.
+    scanLoadingTimer = null;
     render(data, live, { body, subject, sender });
     if (moveFocus) {
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -674,6 +688,8 @@ async function check(moveFocus) {
     }
   } finally {
     if (thisScan === scanId) {
+      clearTimeout(scanLoadingTimer);
+      scanLoadingTimer = null;
       scanAbort = null;
       btn.disabled = false;
       btn.textContent = "Check this email";
