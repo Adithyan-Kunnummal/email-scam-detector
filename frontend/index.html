@@ -539,22 +539,65 @@
       aria-live="polite"
       aria-labelledby="res-h">
 
+
+      <!-- Initial results screen -->
       <div class="empty">
 
-        <svg width="40" height="40" aria-hidden="true">
-          <use href="#i-info"/>
-        </svg>
+        <div class="empty-shield">
+          <svg
+            width="44"
+            height="44"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
 
-        <p id="res-h">
-          <strong>Your analysis will appear here.</strong>
+        <span class="empty-tag">AI EMAIL SECURITY</span>
+
+        <h2 id="res-h">Ready to check your email?</h2>
+
+        <p class="empty-description">
+          Paste an email or upload a screenshot to check
+          for suspicious patterns and potential phishing risks.
         </p>
 
-        <p class="small">
-          Paste an email or upload a screenshot,
-          then select <strong>Check this email</strong>.
+        <div class="empty-divider"></div>
+
+        <div class="empty-steps">
+
+          <div class="empty-step">
+            <span class="empty-step-icon">01</span>
+            <strong>Read content</strong>
+            <small>Email or screenshot</small>
+          </div>
+
+          <div class="empty-step">
+            <span class="empty-step-icon">02</span>
+            <strong>Analyse risk</strong>
+            <small>AI + warning checks</small>
+          </div>
+
+          <div class="empty-step">
+            <span class="empty-step-icon">03</span>
+            <strong>Get advice</strong>
+            <small>Understand next steps</small>
+          </div>
+
+        </div>
+
+        <p class="empty-privacy">
+          Review sensitive information before submitting.
         </p>
 
       </div>
+
 
     </section>
 

@@ -39,6 +39,7 @@ const SAMPLES = {
 };
 
 const $ = (id) => document.getElementById(id);
+const initialResultHTML = document.getElementById("result").innerHTML;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -341,7 +342,7 @@ function clearForm() {
   $("thumb").removeAttribute("src");
   const card = $("result");
   card.className = "card result";
-  card.innerHTML = `<div class="empty"><svg width="40" height="40" aria-hidden="true"><use href="#i-info"/></svg><p id="res-h"><strong>Your analysis will appear here.</strong></p><p class="small">Paste an email or upload a screenshot, then select <strong>Check this email</strong>.</p></div>`;
+  card.innerHTML = initialResultHTML;
   last = null;
   selectTab($("tab-paste"));
   $("body").focus();
