@@ -177,9 +177,19 @@ textarea { min-height: 14rem; resize: vertical; line-height: 1.5; }
 .lv-High .verdict, .lv-Medium .verdict, .lv-Low .verdict {
   background: var(--surface);
 }
-.lv-High   .tone { color: var(--high); }
-.lv-Medium .tone { color: var(--med); }
-.lv-Low    .tone { color: var(--low); }
+/* Match risk heading and icon colours to the bars */
+
+.lv-High .tone {
+    color: #FF3B30;
+}
+
+.lv-Medium .tone {
+    color: #FF8A00;
+}
+
+.lv-Low .tone {
+    color: #FFE600;
+}
 
 /* Outline and glow the entire result card according to its category. */
 .result.lv-High {
