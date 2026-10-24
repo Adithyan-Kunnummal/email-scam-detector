@@ -922,3 +922,151 @@ footer p:last-child {
 @media (prefers-reduced-motion: reduce) {
   .warning-card { transition: none; }
 }
+
+
+/* ==========================================
+   ACTUAL-STATUS ANIMATED SCANNING PANEL
+   ========================================== */
+.result.scanning {
+  border: 1px solid rgba(104, 200, 215, .55);
+  box-shadow: 0 0 24px rgba(104, 200, 215, .12);
+}
+.scan-shell {
+  min-height: 450px;
+  padding: 32px 28px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 15px;
+  text-align: center;
+  animation: scan-enter .28s ease-out both;
+}
+.scan-emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  color: #68C8D7;
+  background: rgba(104, 200, 215, .13);
+  border: 1px solid rgba(104, 200, 215, .28);
+  box-shadow: 0 0 24px rgba(104, 200, 215, .13);
+  animation: scan-pulse 1.9s ease-in-out infinite;
+}
+.scan-label {
+  font-size: .69rem;
+  font-weight: 700;
+  letter-spacing: .13em;
+  color: #68C8D7;
+}
+.scan-shell h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.8vw, 1.7rem);
+  color: var(--ink);
+}
+.scan-description {
+  color: var(--ink-2);
+  line-height: 1.5;
+  font-size: .86rem;
+  max-width: 36ch;
+  min-height: 2.8em;
+}
+.scan-progress-track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--field);
+  margin-top: 7px;
+}
+.scan-progress-track > span {
+  position: absolute;
+  width: 43%;
+  height: 100%;
+  left: -43%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(104, 200, 215, .25), #68C8D7, rgba(104, 200, 215, .75));
+  box-shadow: 0 0 14px rgba(104, 200, 215, .42);
+  animation: scan-indeterminate 1.7s ease-in-out infinite;
+}
+.scan-progress-caption {
+  font-size: .73rem;
+  color: var(--ink-2);
+}
+.scan-steps {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+  list-style: none;
+  margin: 5px 0;
+  padding: 0;
+  width: min(100%, 365px);
+}
+.scan-step {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 12px;
+  padding: 13px;
+  align-items: center;
+  background: var(--field);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  opacity: .62;
+  transition: border-color .2s ease, opacity .2s ease;
+}
+.scan-step.is-active { opacity: 1; border-color: rgba(104, 200, 215, .8); }
+.scan-step.is-done { opacity: 1; }
+.scan-step.is-skipped { opacity: .87; border-color: rgba(255, 181, 71, .6); }
+.scan-step-marker {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-2);
+  background: var(--surface);
+  font-size: .78rem;
+  font-weight: 700;
+}
+.scan-step.is-done .scan-step-marker { color: #092D32; background: #68C8D7; }
+.scan-step.is-active .scan-step-marker { background: rgba(104, 200, 215, .18); color: #68C8D7; }
+.scan-step.is-skipped .scan-step-marker { background: rgba(255,181,71,.16); color: #FFB547; }
+.scan-mini-spinner {
+  display: block;
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(104, 200, 215, .28);
+  border-top-color: #68C8D7;
+  border-radius: 50%;
+  animation: scan-spin .8s linear infinite;
+}
+.scan-step-copy { display: grid; gap: 1px; min-width: 0; }
+.scan-step-copy strong { font-size: .84rem; color: var(--ink); }
+.scan-step-copy small { font-size: .72rem; color: var(--ink-2); }
+.scan-privacy { color: var(--ink-2); font-size: .73rem; line-height: 1.5; max-width: 43ch; }
+@keyframes scan-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(104,200,215,.09); transform: scale(1); }
+  50% { box-shadow: 0 0 30px rgba(104,200,215,.22); transform: scale(1.035); }
+}
+@keyframes scan-indeterminate {
+  0% { left: -43%; }
+  100% { left: 100%; }
+}
+@keyframes scan-spin { to { transform: rotate(360deg); } }
+@keyframes scan-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 520px) {
+  .scan-shell { padding: 28px 16px; min-height: 415px; }
+  .scan-step { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-shell, .scan-emblem, .scan-progress-track > span, .scan-mini-spinner {
+    animation: none !important;
+  }
+  .scan-progress-track > span { left: 0; }
+  .scan-step { transition: none; }
+}

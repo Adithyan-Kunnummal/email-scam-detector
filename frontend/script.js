@@ -211,17 +211,19 @@ function demoCheck(text, sender) {
   };
 }
 
-async function callApi(text, sender) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
+// The progress UI advances only on real events, never on a fake percentage.
+async function callApi(text, sender, controller, onResponse, onFallback) {
+  const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const r = await fetch(API_URL, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, sender: sender || null }), signal: ctrl.signal
+      body: JSON.stringify({ text, sender: sender || null }), signal: controller.signal
     });
     if (!r.ok) throw new Error("HTTP " + r.status);
+    onResponse(); // The server really responded; now process its returned JSON.
     return { data: await r.json(), live: true };
   } catch {
+    onFallback(); // The server failed or timed out; this is NOT a live model result.
     return { data: demoCheck(text, sender), live: false };
   } finally { clearTimeout(timer); }
 }
@@ -434,6 +436,62 @@ function renderEmailEvidence(items, email) {
     </details>`;
 }
 
+/* ---------- animated scan panel ----------
+   Stage 1 is completed input preparation, stage 2 waits for the actual
+   FastAPI response, stage 3 prepares a real report or demo fallback.
+   The moving bar is deliberately indeterminate: we do not know the model's %.
+*/
+function renderScanning(fromScreenshot) {
+  const card = $("result");
+  card.className = "card result scanning";
+  card.setAttribute("aria-busy", "true");
+  card.innerHTML = `
+    <div class="scan-shell">
+      <div class="scan-emblem" aria-hidden="true">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="scan-label">EMAIL SECURITY CHECK</div>
+      <h2 id="res-h" tabindex="-1">Checking your email…</h2>
+      <p class="scan-description" id="scan-description" role="status">Waiting for the local analysis server to respond.</p>
+      <div class="scan-progress-track" aria-hidden="true"><span></span></div>
+      <p class="scan-progress-caption">Analysis in progress · No estimated percentage</p>
+      <ol class="scan-steps" aria-label="Analysis stages">
+        <li class="scan-step is-done" id="scan-prepared">
+          <span class="scan-step-marker" aria-hidden="true">✓</span>
+          <span class="scan-step-copy"><strong>${fromScreenshot ? "Screenshot text ready" : "Email text ready"}</strong><small>Prepared the text you reviewed</small></span>
+        </li>
+        <li class="scan-step is-active" id="scan-server">
+          <span class="scan-step-marker" aria-hidden="true"><span class="scan-mini-spinner"></span></span>
+          <span class="scan-step-copy"><strong>Contacting local AI</strong><small id="scan-server-detail">Awaiting the Python backend</small></span>
+        </li>
+        <li class="scan-step" id="scan-report">
+          <span class="scan-step-marker" aria-hidden="true">3</span>
+          <span class="scan-step-copy"><strong>Preparing your report</strong><small>Risk level, reasons and advice</small></span>
+        </li>
+      </ol>
+      <p class="scan-privacy">Your screenshot remains in your browser; the text is sent to your configured analysis server.</p>
+    </div>`;
+}
+
+function scanningStage(stage) {
+  const server = $("scan-server");
+  const report = $("scan-report");
+  if (!server || !report) return; // A previous scan may have been cleared.
+  server.classList.remove("is-active");
+  server.classList.add(stage === "response" ? "is-done" : "is-skipped");
+  server.querySelector(".scan-step-marker").textContent = stage === "response" ? "✓" : "!";
+  $("scan-server-detail").textContent = stage === "response" ? "Response received" : "Server unavailable or timed out";
+  report.classList.add("is-active");
+  report.querySelector(".scan-step-marker").innerHTML = '<span class="scan-mini-spinner"></span>';
+  $("res-h").textContent = stage === "response" ? "Preparing your report…" : "Checking with browser rules…";
+  $("scan-description").textContent = stage === "response"
+    ? "Reading the analysis returned by your Python backend."
+    : "The local AI could not be reached. Preparing a clearly labelled demo result instead.";
+}
+
 /* ---------- render ---------- */
 let last = null;
 function render(res, live, email) {
@@ -441,6 +499,7 @@ function render(res, live, email) {
   const pct = Math.round(res.scam_probability * 100);
   const card = $("result");
   const warningItems = getWarningItems(res);
+  card.removeAttribute("aria-busy");
   card.className = "card result fresh lv-" + res.risk_level;
   card.innerHTML = `
     <div class="verdict">
@@ -542,7 +601,15 @@ function feedback(btn) {
 }
 
 /* ---------- clear the form and previous result ---------- */
+let scanId = 0;
+let scanAbort = null;
 function clearForm() {
+  scanId++; // Discard results arriving from a scan that was cleared.
+  if (scanAbort) scanAbort.abort();
+  scanAbort = null;
+  $("check").disabled = false;
+  $("check").textContent = "Check this email";
+  document.querySelectorAll("[data-sample]").forEach((b) => { b.disabled = false; });
   ocrRunId++; // Ignore OCR results still processing in the background.
   $("form").reset();
   $("body-err").textContent = "";
@@ -555,6 +622,7 @@ function clearForm() {
   thumbUrl = null;
   $("thumb").removeAttribute("src");
   const card = $("result");
+  card.removeAttribute("aria-busy");
   card.className = "card result";
   card.innerHTML = initialResultHTML;
   last = null;
@@ -565,6 +633,8 @@ $("clear").addEventListener("click", clearForm);
 
 /* ---------- submit ---------- */
 async function check(moveFocus) {
+  const btn = $("check");
+  if (btn.disabled) return; // Avoid simultaneous scans or accidental double submissions.
   const subject = $("subject").value.trim();
   const body = $("body").value.trim();
   const sender = $("sender").value.trim();
@@ -579,18 +649,36 @@ async function check(moveFocus) {
     $("body-err").textContent = "That's very long. Paste just the email itself, without earlier replies.";
     return;
   }
-  const btn = $("check");
+  const thisScan = ++scanId;
+  scanAbort = new AbortController();
   btn.disabled = true;
   btn.innerHTML = `<svg class="spin" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="40 20"/></svg> Checking…`;
+  document.querySelectorAll("[data-sample]").forEach((b) => { b.disabled = true; });
   const text = subject ? subject + "\n\n" + body : body;
-  const { data, live } = await callApi(text, sender);
-  btn.disabled = false;
-  btn.textContent = "Check this email";
-  render(data, live, { body, subject, sender });
-  if (moveFocus) {
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    $("result").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    $("res-h").focus({ preventScroll: true });
+  const fromScreenshot = !$("ocr-ok").hidden;
+  renderScanning(fromScreenshot);
+  if (moveFocus && window.innerWidth < 940) {
+    $("result").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+  }
+  try {
+    const { data, live } = await callApi(text, sender, scanAbort,
+      () => { if (thisScan === scanId) scanningStage("response"); },
+      () => { if (thisScan === scanId) scanningStage("fallback"); }
+    );
+    if (thisScan !== scanId) return; // User pressed Clear while the request was running.
+    render(data, live, { body, subject, sender });
+    if (moveFocus) {
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      $("result").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      $("res-h").focus({ preventScroll: true });
+    }
+  } finally {
+    if (thisScan === scanId) {
+      scanAbort = null;
+      btn.disabled = false;
+      btn.textContent = "Check this email";
+      document.querySelectorAll("[data-sample]").forEach((b) => { b.disabled = false; });
+    }
   }
 }
 $("form").addEventListener("submit", (e) => { e.preventDefault(); check(true); });
