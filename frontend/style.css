@@ -614,3 +614,119 @@ footer p { max-width: 75ch; }
 }
 
 
+/* ==========================================
+   BUTTON HOVER EFFECTS
+   ========================================== */
+
+/* Main CHECK THIS EMAIL button */
+.check-actions .btn-primary {
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        background-color 0.25s ease;
+}
+
+/* Strong cyan glow when hovered */
+.check-actions .btn-primary:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+
+    background-color: #79E1F0;
+
+    box-shadow:
+        0 0 14px rgba(104, 200, 215, 0.65),
+        0 0 30px rgba(104, 200, 215, 0.40),
+        0 8px 24px rgba(104, 200, 215, 0.25);
+
+    cursor: pointer;
+}
+
+/* Slight press effect when clicked */
+.check-actions .btn-primary:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+}
+
+
+/* ==========================================
+   CLEAR BUTTON HOVER
+   ========================================== */
+
+.check-actions .btn-soft {
+    transition:
+        transform 0.2s ease,
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.check-actions .btn-soft:hover {
+    transform: translateY(-2px);
+
+    background-color: #2B434C;
+
+    box-shadow: 0 0 12px rgba(104, 200, 215, 0.18);
+
+    cursor: pointer;
+}
+
+.check-actions .btn-soft:active {
+    transform: scale(0.97);
+}
+
+
+/* ==========================================
+   EXAMPLE BUTTON HOVER
+   ========================================== */
+
+.examples .chip {
+    transition:
+        transform 0.2s ease,
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        color 0.2s ease;
+}
+
+/* Hover effect for example buttons */
+.examples .chip:hover {
+    transform: translateY(-3px);
+
+    background-color: #203B44;
+
+    border-color: #68C8D7;
+
+    color: #A1F1FF;
+
+    box-shadow:
+        0 0 12px rgba(104, 200, 215, 0.30);
+
+    cursor: pointer;
+}
+
+/* Button press effect */
+.examples .chip:active {
+    transform: translateY(0) scale(0.96);
+}
+
+
+/* ==========================================
+   KEYBOARD ACCESSIBILITY
+   ========================================== */
+
+.check-actions .btn:focus-visible,
+.examples .chip:focus-visible {
+    outline: 2px solid #79E1F0;
+    outline-offset: 4px;
+}
+
+/* Disable motion for users who prefer less animation */
+@media (prefers-reduced-motion: reduce) {
+    .check-actions .btn,
+    .examples .chip {
+        transition: none;
+    }
+
+    .check-actions .btn:hover,
+    .examples .chip:hover {
+        transform: none;
+    }
+}
+
