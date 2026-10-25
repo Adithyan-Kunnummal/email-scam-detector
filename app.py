@@ -271,6 +271,16 @@ def check(email: EmailIn):
     }
 
 
+@app.middleware("http")
+async def revalidate_frontend(request, call_next):
+    # Without this, browsers may keep using an old style.css or script.js after the files
+    # change. "no-cache" makes them check for a newer version (unchanged files cost a 304).
+    response = await call_next(request)
+    if request.url.path != "/check":
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 # Serve the web page too, so http://localhost:8000 opens the app (registered after /check).
 _FRONTEND = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
 if os.path.isdir(_FRONTEND):
