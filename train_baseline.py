@@ -8,7 +8,7 @@ The app falls back to this model when no trained DistilBERT folder is present, s
 must behave like DistilBERT: content in, scam probability out.
 
 Input (CSV):
-    data.csv   body, label ("scam" / "not scam"); any other columns are ignored
+    data/data_combined.csv (default)   body, label ("scam" / "not scam"); any other columns are ignored
 
 Run:
     pip install pandas scikit-learn joblib ftfy
@@ -29,7 +29,7 @@ from sklearn.pipeline import Pipeline
 import email_features as ef
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--data", default="data.csv")
+ap.add_argument("--data", default="data/data_combined.csv")
 ap.add_argument("--out", default="baseline_model.joblib")
 ap.add_argument("--no-clean", action="store_true",
                 help="skip clean_text() on the body (only if the data was already cleaned with it)")

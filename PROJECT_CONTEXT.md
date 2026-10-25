@@ -35,7 +35,8 @@ POST /check {text, sender?}  -->  [FastAPI backend: app.py]
    3. RULE-BASED CHECKS -> reasons
         content: urgency, money/payment, login/password requests, raw-IP links,
                  lookalike LINK domains
-        strong:  investment, job, gift-card payment, prize, "Hi Mum" new number,
+        strong:  investment, job, gift-card payment, prize, family member ("Hi Mum")
+                 with a new number or asking for money, urgent money request,
                  move to WhatsApp/Telegram, asks for a password/PIN by email
                  (scam types the model misses, sections 5e-5f)
         sender:  lookalike SENDER domain, government claim from a non-.gov.au sender,
@@ -159,9 +160,9 @@ The two are tied on this test set; a difference of 2 emails is noise. DistilBERT
 | | Low | Medium | High |
 |---|---|---|---|
 | Scams (956) | 13 (1.4%) | 3 | 940 |
-| Genuine (2,859) | 2,842 | 7 | 10 (0.3%) |
+| Genuine (2,859) | 2,840 | 9 | 10 (0.3%) |
 
-Compared with the model alone at the old cut-offs (14 scams Low, 1 genuine Medium, 10 genuine High), the test-set gain is small: one more scam kept out of Low, at the cost of 6 more genuine emails at Medium. That is expected, because the test set contains few of the modern scam types the rules target. The main gain is on modern scams (above).
+Compared with the model alone at the old cut-offs (14 scams Low, 1 genuine Medium, 10 genuine High), the test-set gain is small: one more scam kept out of Low, at the cost of 8 more genuine emails at Medium (numbers updated 25 Oct after the family-emergency rules, section 5g). That is expected, because the test set contains few of the modern scam types the rules target. The main gain is on modern scams (above).
 
 **Limitations for the report:** the test data is old and mixed-source, so its scores overstate real-world accuracy; the strong-sign rules are hand-written keyword patterns that scammers can avoid by rewording; a brand name in a subdomain of another site (`my-gov-au.verify-id.com`) is not flagged, because only the registered name is checked; screenshots lose link addresses.
 
@@ -190,6 +191,22 @@ Personal mail never counts: free webmail (outlook.com, icloud.com …) and the e
 The dataset can't show the benefit, because it has almost no genuine bank or government emails. The hand-written examples can: genuine CommBank, NAB, Medicare and Australia Post emails sent from their real addresses are now Medium instead of High. Forged official senders were common in the 2000s data; today, major banks and government agencies publish DMARC policies that make forging their exact domain harder. But the app can't verify an address the user types in. The proper fix is checking SPF/DKIM/DMARC in a Gmail add-on (section 7) and retraining with genuine notifications.
 
 The test set has no sender addresses, so this cap doesn't change the section 5e test-set results.
+
+### 5g. Family-emergency scams (25 Oct 2026)
+
+**Problem.** "Hi, it's your son. I need $10,000 because I need help and I am in an emergency" was rated **Low** (model score 0.07, no rule fired). The training data has no family-emergency ("Hi Mum") scams; they appeared later and mostly arrive by text message. The family rule only looked for "new number / broken phone", "$10,000" is not a money keyword, and "emergency" was not an urgency word.
+
+**Change.** Two strong signs (two together give High):
+- **Family claim + money request** (`family_impersonation`, widened): "it's (me,) your son / daughter / grandson …" or "Hi Mum / Dad / Grandma …", followed within about 150 characters by a request for money ("need / send / transfer … $800 / money / cash").
+- **Urgent money request** (`urgent_money`, new): a money request close to "emergency / urgent / asap / right now / today / in trouble / hospital / arrested".
+
+**Results.**
+- Four family-emergency variations (son, Mum, grandson, daughter) are now High, in the backend and the browser demo. The "new number" message without a money request stays Medium.
+- Genuine family messages ("Hi Mum, are we still on for dinner?", "Dad, I'll pay you back on Friday"), bills and invoices stay Low.
+- Training data: the widened family rule fires on 0 of 14,292 genuine emails; urgent money fires on 4 genuine (0.03%, news items such as "will pay $3.64 more … effective today") and 111 scams.
+- Test set: scams unchanged (13 Low, 3 Medium, 940 High); genuine Medium 7 → 9, genuine High unchanged at 10.
+
+**Not retrained.** The model still scores these scams 0.01–0.27. Fixing the model itself needs a few hundred family-emergency scams *and* genuine family messages (so it doesn't learn "mum" or "$" = scam), with real examples held out for testing. Listed as future work.
 
 ### 5d. Format required for any training file
 

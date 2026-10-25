@@ -94,15 +94,22 @@ OFF_PLATFORM = re.compile(r"(message|contact|text|add|chat with|reach) (us|me|ou
 GIFT_CARD_PAYMENT = re.compile(r"(pay|paid|payment|purchase|buy)[^.]{0,40}gift ?cards?|gift ?card (codes?|numbers?)")
 PRIZE = re.compile(r"you('ve| have) (won|been selected)|congratulations[^.]{0,40}(won|winner|selected)"
                    r"|claim your (prize|reward|winnings|voucher)|lottery winner")
+# Family-emergency ("Hi Mum") scams: a new number, or a claim to be a relative plus a money request
+RELATIVE = r"(son|daughter|mum|mom|dad|grandson|granddaughter|grandma|grandpa|nephew|niece|brother|sister)"
+MONEY_ASK = r"(need|send|transfer|lend|borrow|pay)\b[^.]{0,40}(\$\s?\d[\d,]*|money|cash|funds)"
 FAMILY = re.compile(r"\b(hi|hey) (mum|mom|dad)\b[^.]{0,80}(new number|broke|lost)|this is my new number"
-                    r"|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)")
+                    r"|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)"
+                    rf"|\b(it'?s|this is|its) (me,? )?(your |ur )?{RELATIVE}\b[\s\S]{{0,150}}{MONEY_ASK}"
+                    rf"|(^|\b(hi|hey) )(mum|mom|dad|grandma|grandpa)\b[\s\S]{{0,150}}{MONEY_ASK}")
+EMERGENCY = r"(emergency|urgent(ly)?|asap|right now|immediately|today|in trouble|hospital|arrested)"
+URGENT_MONEY = re.compile(rf"{MONEY_ASK}[\s\S]{{0,100}}\b{EMERGENCY}\b|\b{EMERGENCY}\b[\s\S]{{0,100}}{MONEY_ASK}")
 # Asking for a password or PIN to be sent back: genuine organisations never do this by email
 SECRET_REQUEST = re.compile(r"\b(reply|respond|send|provide|tell us|give us)\b[^.=\n]{0,60}"
                             r"\b(password|passcode|pin|security code|netcode|one[- ]time code|card number)\b")
 LOOKALIKE_FLAGS = {"lookalike_link", "lookalike_sender"}
 # Each of these is a strong sign on its own: at least Medium, and two together make High.
 STRONG_FLAGS = {"investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation",
-                "secret_request"}
+                "secret_request", "urgent_money"}
 
 
 def link_hosts(text: str) -> list[str]:
@@ -168,8 +175,10 @@ def signals(text: str, sender: str) -> dict[str, str]:
     if PRIZE.search(t):
         add("prize", "It says you have won or been selected for a prize, a common scam hook.")
     if FAMILY.search(t):
-        add("family_impersonation", "It claims to be a family member with a new number. Call them on "
-                                    "the number you already have before doing anything.")
+        add("family_impersonation", "It claims to be a family member who needs money or has a new number. "
+                                    "Call them on the number you already have before doing anything.")
+    if URGENT_MONEY.search(t):
+        add("urgent_money", "It asks for money urgently, a pressure tactic common in scams.")
     for host in link_hosts(text):
         if re.fullmatch(r"[\d.]+", host):
             add("raw_ip_link", "A link goes to a raw number address instead of a website name.")

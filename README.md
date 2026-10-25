@@ -63,8 +63,10 @@ Web page (frontend/) --POST /check {text, sender?}--> FastAPI (app.py)
    3. RULE CHECKS           content: urgency, money, login requests, raw-IP links,
                                      lookalike LINK domains
                             scam types the model misses (strong signs): investment,
-                                     job, gift-card payment, prize, "Hi Mum" new number,
-                                     move to WhatsApp/Telegram, asks for a password/PIN
+                                     job, gift-card payment, prize, family member
+                                     ("Hi Mum") with a new number or asking for money,
+                                     urgent money request, move to WhatsApp/Telegram,
+                                     asks for a password/PIN
                             sender:  lookalike SENDER domain, government claim from a
                                      non-.gov.au sender, unusual ending (.xyz ...),
                                      free webmail + official-sounding text

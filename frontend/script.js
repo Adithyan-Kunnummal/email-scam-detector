@@ -163,8 +163,15 @@ const JOB = /(earn|make|paid) (up to )?\$[\d,]+ ?(\/|per|a|an|each) ?(day|week|h
 const OFF_PLATFORM = /(message|contact|text|add|chat with|reach) (us|me|our( [a-z]+){1,2})? ?(on|via) (whatsapp|telegram|signal|wechat)/;
 const GIFT_CARD_PAYMENT = /(pay|paid|payment|purchase|buy)[^.]{0,40}gift ?cards?|gift ?card (codes?|numbers?)/;
 const PRIZE = /you('ve| have) (won|been selected)|congratulations[^.]{0,40}(won|winner|selected)|claim your (prize|reward|winnings|voucher)|lottery winner/;
-const FAMILY = /\b(hi|hey) (mum|mom|dad)\b[^.]{0,80}(new number|broke|lost)|this is my new number|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)/;
-const STRONG_FLAGS = ["investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation", "secret_request"];
+const RELATIVE = "(son|daughter|mum|mom|dad|grandson|granddaughter|grandma|grandpa|nephew|niece|brother|sister)";
+const MONEY_ASK = "(need|send|transfer|lend|borrow|pay)\\b[^.]{0,40}(\\$\\s?\\d[\\d,]*|money|cash|funds)";
+const EMERGENCY = "(emergency|urgent(ly)?|asap|right now|immediately|today|in trouble|hospital|arrested)";
+const FAMILY = new RegExp("\\b(hi|hey) (mum|mom|dad)\\b[^.]{0,80}(new number|broke|lost)|this is my new number" +
+  "|my (old )?phone (is |got )?(broken|broke|lost|died)[^.]{0,80}(new number|this number)" +
+  `|\\b(it'?s|this is|its) (me,? )?(your |ur )?${RELATIVE}\\b[\\s\\S]{0,150}${MONEY_ASK}` +
+  `|(^|\\b(hi|hey) )(mum|mom|dad|grandma|grandpa)\\b[\\s\\S]{0,150}${MONEY_ASK}`);
+const URGENT_MONEY = new RegExp(`${MONEY_ASK}[\\s\\S]{0,100}\\b${EMERGENCY}\\b|\\b${EMERGENCY}\\b[\\s\\S]{0,100}${MONEY_ASK}`);
+const STRONG_FLAGS = ["investment", "job", "off_platform", "gift_card_payment", "prize", "family_impersonation", "secret_request", "urgent_money"];
 const TRUSTED = ["ato", "mygov", "auspost", "centrelink", "servicesaustralia", "commbank", "westpac", "anz", "nab", "rmit", "homeaffairs"];
 function demoSignals(text, sender) {
   const t = text.toLowerCase(), found = [], flags = [];
@@ -179,7 +186,8 @@ function demoSignals(text, sender) {
   if (JOB.test(t)) add("job", "It offers easy money for simple work, a sign of job scams.");
   if (OFF_PLATFORM.test(t)) add("off_platform", "It asks you to continue the conversation on WhatsApp, Telegram or a similar app.");
   if (PRIZE.test(t)) add("prize", "It says you have won or been selected for a prize, a common scam hook.");
-  if (FAMILY.test(t)) add("family_impersonation", "It claims to be a family member with a new number. Call them on the number you already have before doing anything.");
+  if (FAMILY.test(t)) add("family_impersonation", "It claims to be a family member who needs money or has a new number. Call them on the number you already have before doing anything.");
+  if (URGENT_MONEY.test(t)) add("urgent_money", "It asks for money urgently, a pressure tactic common in scams.");
   for (const url of text.match(/https?:\/\/[^\s<>"')]+/gi) || []) {
     const host = url.toLowerCase().replace(/^https?:\/\//, "").split(/[\/?#]/)[0];
     if (/^[\d.]+(:\d+)?$/.test(host)) add("raw_ip_link", "A link goes to a raw number address instead of a website name.");
@@ -294,6 +302,11 @@ const WARNING_INFO = {
     title: "Possible family impersonation",
     why: "Scammers may pretend to be a relative using a new phone number to request immediate help or money.",
     check: "Call the person on a number you already know before responding."
+  },
+  urgent_money: {
+    title: "Urgent request for money",
+    why: "Scammers invent emergencies, such as an accident, an arrest or a stranded relative, so you send money before you have time to check.",
+    check: "Don't send money until you have spoken to the person or organisation on a number you already know."
   },
   secret_request: {
     title: "Password, PIN or code requested",

@@ -23,8 +23,10 @@ FastAPI backend (app.py)
  2. MODEL          DistilBERT reads the email CONTENT only -> scam probability
                    (falls back to TF-IDF + logistic regression if PyTorch is missing)
  3. RULES          content:  urgency, money, login requests, raw-IP links, lookalike links
-                   strong:   investment, job, gift-card payment, prize, "Hi Mum" new number,
-                             move to WhatsApp/Telegram, asks for a password/PIN by email
+                   strong:   investment, job, gift-card payment, prize, family member
+                             ("Hi Mum") with a new number or asking for money, urgent
+                             money request, move to WhatsApp/Telegram, asks for a
+                             password/PIN by email
                    sender:   lookalike domain, government claim from a non-.gov.au address,
                              unusual ending (.xyz), free webmail + official-sounding text
  4. RISK LEVEL     lookalike sender/link or 2 strong signs -> High
@@ -148,14 +150,22 @@ What the examples showed:
    - **Why it's acceptable:** major banks and agencies now publish DMARC policies that make forging their exact domain harder, but the app can't verify an address the user types in. The proper fix is header checks in an email add-on (section 8).
    - **The test set has no sender addresses,** so this rule doesn't affect 5d.
 
+5. **Family-emergency scams.**
+   - **The problem:** "Hi, it's your son. I need $10,000 because I need help and I am in an emergency" was rated Low (model 0.07). The training data has no such scams; they mostly arrive by text message.
+   - **The fix:** two strong signs. One for a family-member claim plus a money request ("it's your son … need $10,000"); one for an urgent money request ("need $… emergency / asap / arrested"). Two strong signs make High.
+   - **Results:** four variations (son, Mum, grandson, daughter) are now High; genuine family messages, bills and invoices stay Low.
+   - **Training data:** the family rule fires on 0 of 14,292 genuine emails; urgent money fires on 4 genuine emails (0.03%) and 111 scams.
+   - **Test set:** scams unchanged, 2 more genuine emails at Medium.
+   - **Why not retrain:** it would need a few hundred family scams plus genuine family messages (so "mum" or "$" don't become scam words), tested on real held-out examples. That's future work.
+
 ### 5d. Final system on the test set (DistilBERT + rules + tuned cut-offs, run once)
 
 | | Low | Medium | High |
 |---|---|---|---|
 | Scams (956) | 13 (1.4%) | 3 | 940 (98.3%) |
-| Genuine (2,859) | 2,842 (99.4%) | 7 | 10 (0.3%) |
+| Genuine (2,859) | 2,840 (99.3%) | 9 | 10 (0.3%) |
 
-- **On the test set the gain is small.** The model alone at the original cut-offs gave 14 scams Low, 1 genuine Medium and 10 genuine High, so the new setup keeps one more scam out of Low and puts 6 more genuine emails at Medium. That's expected, because the test set contains few of the modern scam types the rules target.
+- **On the test set the gain is small.** The model alone at the original cut-offs gave 14 scams Low, 1 genuine Medium and 10 genuine High, so the new setup keeps one more scam out of Low and puts 8 more genuine emails at Medium. That's expected, because the test set contains few of the modern scam types the rules target.
 - **On the modern examples:**
 
   | | Before the rules | After |
