@@ -84,7 +84,8 @@ Result card: colour + icon + word, reasons, next steps, Details, feedback button
 | Training | about 1 minute on a laptop CPU | 2 epochs, learning rate 2e-5, batch 16, max 256 tokens, mixed precision, **Google Colab T4 GPU** (minutes) |
 | Model selection | – | best epoch by **recall** on validation (missing a scam is the costlier error) |
 | Input | email content only | email content only |
-| Speed in the app | instant | well under a second per email on a laptop CPU (3,815 emails in 528 s, batched) |
+| Speed in the app | instant | well under a second per email on a laptop CPU (3,815 emails in about 9–10 minutes, batched) |
+| Runs | – | trained twice with identical data, settings and seed (24 and 25 Oct); **the second run is the current model** |
 | Role | fallback when PyTorch isn't installed | main model |
 
 **Why the sender address is not given to the model:** in the public datasets, legitimate senders are mostly a few organisations and mailing lists (enron.com, samba.org), so a model trained on addresses learns where an email came from, not whether it is a scam. Tested: adding sender features changed nothing on the test set (9 missed scams either way). Instead, sender addresses are handled by the rule-based checks.
@@ -98,16 +99,17 @@ Result card: colour + icon + word, reasons, next steps, Details, feedback button
 | Model | Accuracy | Precision (scam) | Recall (scam) | Missed scams | False alarms |
 |---|---|---|---|---|---|
 | Baseline | 99.4% | 99.1% | 98.6% | 13 | 9 |
-| DistilBERT | 99.3% | 98.8% | 98.4% | 15 | 11 |
+| **DistilBERT (current model, run 2)** | **99.4%** | **99.2%** | **98.5%** | **14** | **8** |
+| DistilBERT (first run) | 99.3% | 98.8% | 98.4% | 15 | 11 |
 
-- **The two models are tied;** a difference of 2 emails is noise.
+- **The models are tied;** differences of a few emails are noise.
 - **Scores this high overstate real-world accuracy.** The scams and genuine emails come from different sources and eras, so part of the task is telling the sources apart.
 - **DistilBERT is very confident:** almost all scores are below 0.05 or above 0.95. With the original cut-offs (0.4 / 0.7) it put only 2 scams and 1 genuine email in Medium, while the baseline put 26 scams and 16 genuine emails there.
 
 ### 5b. Modern emails (24 hand-written examples, a sanity check only)
-The test set is 2000s email, so 24 modern Australian examples (12 genuine, 12–13 scams) were written to see how the models handle today's emails. They are not a statistically valid test.
+The test set is 2000s email, so 24 modern Australian examples (12 genuine, 12–13 scams) were written to see how the models handle today's emails. They are not a statistically valid test. *This subsection describes the first DistilBERT run, which motivated the rule changes in 5c; the current model's results and the difference between the two runs are in 5g.*
 
-Model score only:
+Model score only (first run):
 
 | | DistilBERT | Baseline |
 |---|---|---|
@@ -131,49 +133,61 @@ What the examples showed:
    | **0.2 (chosen)** | **6** | **3** | **4** |
    | 0.1 with sign weight 0.1 | 4 | 3 | 231 |
 
-   A larger per-sign weight moves many genuine emails into Medium, because "money" and "urgency" words are common in normal email, so the weight stays at 0.05. The baseline keeps 0.4, because it scores many genuine modern emails 0.2–0.5.
+   A larger per-sign weight moves many genuine emails into Medium, because "money" and "urgency" words are common in normal email, so the weight stays at 0.05. The baseline keeps 0.4, because it scores many genuine modern emails 0.2–0.5. (Table from the first run.)
+
+   **Re-tuned with the current model:**
+
+   | Medium cut-off | Sign weight | Scams rated Low (of 383) | Genuine rated High (of 1,143) | Genuine rated Medium |
+   |---|---|---|---|---|
+   | **0.2 (kept)** | **0.05** | **7** | **3** | **4** |
+   | 0.3–0.5 | 0.05 | 7 | 3 | 4 |
+   | 0.1 | 0.1 | 4 | 3 | 232 |
+
+   The current model's scores are so extreme that every Medium cut-off from 0.2 to 0.5 gives the same result, and catching 3 more scams would put 232 genuine emails in Medium. So the cut-offs were kept (0.2 / 0.7 / 0.05).
 3. **Lookalike-check fixes.** Testing showed **8 genuine test emails wrongly forced to High** by false lookalike-link matches:
    - a link-parsing bug: `groups.google.com?hl=en` kept `?hl=en` in the address;
    - Google's genuine domains (`googlepages.com`, `googlecode.com`) were missing from the allowlist;
    - `cetus-links.org` matched the brand Linkt;
    - a brand's real overseas site (`vodafone.co.nz`) or an unrelated site (`up.pt`, a Portuguese university, not Up Bank) was flagged.
 
-   After the fixes, genuine emails rated High went back to the model's own 10.
+   After the fixes, genuine emails rated High went back to the model's own count (10 with the first run, 7 with the current model).
 
 4. **Official-sender cap for genuine bank and government emails.**
-   - **The problem:** the model rated genuine emails as scams: CommBank eStatement 0.99, Medicare claim 0.999, NAB card notice 0.84, Australia Post tracking 0.85. Its training data has almost no genuine bank or government emails, so words like "bank", "account" and "myGov" mean scam to it.
+   - **The problem:** the model rates genuine emails as scams. Current model: CommBank eStatement 0.996, Medicare claim 1.000, NAB card notice 0.989, Australia Post tracking 0.998 (first run: 0.99, 0.999, 0.84, 0.85). Its training data has almost no genuine bank or government emails, so words like "bank", "account" and "myGov" mean scam to it.
    - **The rule:** if the sender is a real official address (on the allowlist, or `.gov.au`), every link goes to an official website and no strong scam sign fires, High is lowered to **Medium, never Low**. The explanation says the address is official but could be faked.
    - **Personal mail never counts:** free webmail (outlook.com, icloud.com) and the exact domains internet providers give customers (`telstra.com`, `iinet.net.au`). In the old data, 15 Nigerian-fraud emails came from personal `@telstra.com` accounts.
    - **Added alongside:** a strong sign for **asking for a password, PIN or one-time code by email**. It fires on 0 of 14,292 genuine training emails; safety advice like "never share your password" is ignored.
    - **Results:** genuine CommBank, NAB, Medicare and Australia Post emails from their real addresses are now **Medium instead of High** (still High without a sender address). Forged official senders stay High if a link goes elsewhere (lookalike site, bit.ly) or a password is requested.
-   - **The trade-off, measured on `data.csv`:** **16 of 4,764 scams (0.3%)**, forged PayPal, eBay, Amazon, Apple, DHL and Microsoft addresses, drop from High to Medium. They're still warned. The data can't show the benefit, because it has almost no genuine official emails (1 of 61 genuine official-sender emails was affected; the other 60 were already Low).
+   - **The trade-off, measured on `data.csv`:** **16 of 4,764 scams (0.3%)**, forged PayPal, eBay, Amazon, Apple, DHL and Microsoft addresses, drop from High to Medium. They're still warned. The data can't show the benefit, because it has almost no genuine official emails (with the current model, 2 of 61 genuine official-sender emails are lowered from High to Medium; 58 were already Low and 1 Medium).
    - **Why it's acceptable:** major banks and agencies now publish DMARC policies that make forging their exact domain harder, but the app can't verify an address the user types in. The proper fix is header checks in an email add-on (section 8).
    - **The test set has no sender addresses,** so this rule doesn't affect 5d.
 
 5. **Family-emergency scams.**
-   - **The problem:** "Hi, it's your son. I need $10,000 because I need help and I am in an emergency" was rated Low (model 0.07). The training data has no such scams; they mostly arrive by text message.
+   - **The problem:** "Hi, it's your son. I need $10,000 because I need help and I am in an emergency" was rated Low (first run: model 0.07, no rule fired). The training data has no such scams; they mostly arrive by text message. The current model scores it 0.38, still not enough on its own.
    - **The fix:** two strong signs. One for a family-member claim plus a money request ("it's your son … need $10,000"); one for an urgent money request ("need $… emergency / asap / arrested"). Two strong signs make High.
    - **Results:** four variations (son, Mum, grandson, daughter) are now High; genuine family messages, bills and invoices stay Low.
    - **Training data:** the family rule fires on 0 of 14,292 genuine emails; urgent money fires on 4 genuine emails (0.03%) and 111 scams.
    - **Test set:** scams unchanged, 2 more genuine emails at Medium.
    - **Why not retrain:** it would need a few hundred family scams plus genuine family messages (so "mum" or "$" don't become scam words), tested on real held-out examples. That's future work.
 
-### 5d. Final system on the test set (DistilBERT + rules + tuned cut-offs, run once)
+### 5d. Final system on the test set (current DistilBERT + rules + tuned cut-offs, run once)
 
 | | Low | Medium | High |
 |---|---|---|---|
-| Scams (956) | 13 (1.4%) | 3 | 940 (98.3%) |
-| Genuine (2,859) | 2,840 (99.3%) | 9 | 10 (0.3%) |
+| Scams (956) | 13 (1.4%) | 3 (0.3%) | 940 (98.3%) |
+| Genuine (2,859) | 2,844 (99.5%) | 8 (0.3%) | 7 (0.2%) |
 
-- **On the test set the gain is small.** The model alone at the original cut-offs gave 14 scams Low, 1 genuine Medium and 10 genuine High, so the new setup keeps one more scam out of Low and puts 8 more genuine emails at Medium. That's expected, because the test set contains few of the modern scam types the rules target.
-- **On the modern examples:**
+- **On the test set the gain is small.** The current model alone at the original cut-offs gives 14 scams Low, 1 genuine Medium and 7 genuine High, so the full system keeps one more scam out of Low and puts 7 more genuine emails at Medium. That's expected, because the test set contains few of the modern scam types the rules target. (With the first run, the same system gave 2,840 / 9 / 10 for genuine emails, so the retrained model removed 3 genuine High results.)
+- **On the modern examples** ("before" = the original system: no strong-sign rules, no official-sender cap, Medium from 0.4):
 
   | | Before the rules | After |
   |---|---|---|
-  | Scams (13) | 5 Low, 1 Medium, 7 High | **0 Low**, 5 Medium, 8 High |
-  | Genuine (12) | 9 Low, 1 Medium, 2 High | 8 Low, 2 Medium, 2 High |
+  | Scams (13), current model | 3 Low, 0 Medium, 10 High | **0 Low**, 2 Medium, 11 High |
+  | Genuine (12), current model | 10 Low, 0 Medium, 2 High | 9 Low, 1 Medium, 2 High |
+  | Scams (13), first run | 5 Low, 1 Medium, 7 High | **0 Low**, 5 Medium, 8 High |
+  | Scams (13), baseline fallback | 5 Low, 2 Medium, 6 High | **0 Low**, 5 Medium, 8 High |
 
-  The baseline fallback gives the same scam results: 0 Low, 5 Medium, 8 High.
+  Whichever model runs, the rules keep every modern scam example out of Low.
 
 ### 5e. Lookalike-domain check vs a trained domain classifier
 Evaluation with 31 brands held out (344 domains, 313 fakes), plus 1,541 unrelated genuine domains (a list of common genuine sites plus a sample of sender domains from `data.csv`):
@@ -192,14 +206,37 @@ Evaluation with 31 brands held out (344 domains, 313 fakes), plus 1,541 unrelate
 
 | Email | Model score | Result | Reason shown |
 |---|---|---|---|
-| ATO refund, verify bank details, raw-IP link | 0.999 | High | lookalike sender, raw-IP link, urgency, money, login request |
-| Linkt unpaid toll, link to linkt-pay.top | 0.003 | High | link and sender imitate linkt.com.au (the model alone would miss it) |
-| `https://c0mmbank.com.au/review` | 0.012 | High | link imitates commbank.com.au |
+| ATO refund, verify bank details, raw-IP link | 1.000 | High | lookalike sender, raw-IP link, urgency, money, login request |
+| Linkt unpaid toll, link to linkt-pay.top | 0.002 | High | link and sender imitate linkt.com.au (the model alone would miss it) |
+| `https://c0mmbank.com.au/review` | 0.006 | High | link imitates commbank.com.au |
 | Home Affairs visa fee paid by gift card | 0.999 | High | gift-card payment, lookalike sender |
-| Job: earn $800/week rating products, message on WhatsApp | 0.016 | High | job-scam and WhatsApp signs |
-| "I made $3,000 last week with this crypto trading platform" | 0.005 | Medium | investment-scam sign |
-| "Hi Mum, I broke my phone. This is my new number" | 0.03 | Medium | family-impersonation sign |
-| RMIT assignment reminder; AGL bill | ≈0.00 | Low | – |
+| Job: earn $800/week rating products, message on WhatsApp | 0.096 | High | job-scam and WhatsApp signs |
+| "Hi, it's your son. I need $10,000 … emergency" | 0.376 | High | family-member money request + urgent money request |
+| "I made $3,000 last week with this crypto trading platform" | 0.011 | Medium | investment-scam sign |
+| "Hi Mum, I broke my phone. This is my new number" | 0.214 | Medium | family-impersonation sign |
+| Genuine CommBank eStatement from noreply@commbank.com.au | 0.996 | Medium | official sender with official links (High without the sender) |
+| RMIT assignment reminder; AGL bill; RMIT exam timetable | ≈0.00–0.07 | Low | – |
+
+Scores are from the current model.
+
+### 5g. Training DistilBERT twice: how much the runs differ
+DistilBERT was trained a second time with the same data, settings, seed and split; **the second run is the current model**. On the old test set the two runs differ by a few emails (15 vs 14 missed scams, 11 vs 8 false alarms). On modern emails, which look nothing like the training data, they disagree wildly:
+
+| Email | First run | Current model |
+|---|---|---|
+| Investment scam ("passive income … AI trading bot … returns of 30%") | 0.015 | 0.826 |
+| Prize scam ("$1,000 Woolworths voucher … pay a $2 shipping fee") | 0.078 | 0.939 |
+| "Hi Mum, I'm in trouble … transfer $2,500 … today" | 0.273 | 0.962 |
+| "Hi, it's your son. I need $10,000 … emergency" | 0.07 | 0.376 |
+| "Netflix: payment declined … update your card" (scam) | 0.316 | 0.018 |
+| Genuine RMIT exam timetable | 0.66 | 0.068 |
+| Crypto-tip scam ("I made $3,000 last week …") | 0.005 | 0.011 |
+
+Modern examples, current model, score alone: 3 of 13 scams below 0.2 (first run: 5 of 12), 3 of 12 genuine at 0.2 or more (first run: 4).
+
+- **Why:** small differences between runs (GPU arithmetic, Colab library versions, which epoch was kept as best) are enough to swing scores from near 0 to near 1 on emails unlike the training data.
+- **What it means:** a better score on a few modern examples after retraining is luck, not learning. The training data still contains no such scams, and the model's behaviour on them isn't stable or trustworthy.
+- **Why it supports the design:** the rule-based checks give the same result for these scam types whatever the model does. The app rated 0 of 13 modern scams Low with both runs and with the baseline. The real fix is modern training data (section 8).
 
 ## 6. Design decisions and reasons
 
@@ -207,7 +244,7 @@ Evaluation with 31 brands held out (344 domains, 313 fakes), plus 1,541 unrelate
 |---|---|
 | Model reads content only; sender handled by rules | avoids dataset shortcuts; tested with no loss of accuracy |
 | A real official sender lowers High to Medium only, never to Low, and only with official links and no strong sign | the model wrongly flags genuine bank and government emails; addresses can be forged, so an official address never makes an email look safe (16 forged-brand scams, 0.3%, go High → Medium) |
-| Lookalike sender or link → High on its own | genuine organisations don't send from imitation addresses; catches scams the model misses (Linkt toll 0.003 → High) |
+| Lookalike sender or link → High on its own | genuine organisations don't send from imitation addresses; catches scams the model misses (Linkt toll 0.002 → High) |
 | Three levels, not scam/not scam or a percentage | shows uncertainty honestly; Medium = "check first" |
 | Never say "Safe" | the system can miss scams; Low means "no strong warning signs found" |
 | Template explanations, no LLM | the brief forbids paid APIs; templates are predictable and testable |
@@ -219,9 +256,9 @@ Evaluation with 31 brands held out (344 domains, 313 fakes), plus 1,541 unrelate
 
 ## 7. Limitations (be upfront in the report)
 - **Old, mixed-source training data:** 99% test scores overstate real-world accuracy, and the model has never seen modern genuine notifications or modern scam types.
-- **False alarms on genuine bank and government emails:** the model scores them 0.84–0.999. With the real sender address the official-sender cap makes them Medium; without the sender they are still High.
+- **False alarms on genuine bank and government emails:** the current model scores them 0.99–1.00. With the real sender address the official-sender cap makes them Medium; without the sender they are still High.
 - **The official-sender cap trusts an address the app can't verify:** a forged official address with official-looking links and no strong scam sign gets Medium instead of High (0.3% of scams in the data).
-- **DistilBERT is overconfident and unstable on short notifications** (Australia Post tracking: 0.85 vs 0.03 depending on the subject line).
+- **DistilBERT is overconfident and unstable on modern emails.** Scores swing between near 0 and near 1 depending on small wording changes (Australia Post tracking: 0.85 vs 0.03 with and without the subject line, first run) and between two training runs on identical data (5g).
 - **The strong-sign rules are hand-written keyword patterns;** scammers can avoid them by rewording.
 - **Lookalike check:**
   - a brand name in a subdomain of another site (my-gov-au.verify-id.com) isn't flagged, because only the registered name is checked;
@@ -257,7 +294,7 @@ Demo emails with expected results: `samples/demo_emails.md`. Design record: `PRO
 
 ## 10. Suggested figures
 1. The architecture diagram (section 2) redrawn as a flowchart.
-2. Screenshots of the result card at all three levels: the Linkt toll (High from a lookalike link despite a 0.003 model score), the crypto tip (Medium), the RMIT reminder (Low).
+2. Screenshots of the result card at all three levels: the Linkt toll (High from a lookalike link despite a 0.002 model score), the crypto tip (Medium), the RMIT reminder (Low).
 3. Screenshot flow: upload → OCR progress → editable text → result.
 4. A bar chart of the final system's Low/Medium/High split for scams and genuine emails (5d).
 5. The domain-check comparison table (5e).
@@ -265,9 +302,10 @@ Demo emails with expected results: `samples/demo_emails.md`. Design record: `PRO
 
 ## 11. Key numbers at a glance
 - 19,074 training emails (25% scam); test set 3,815; validation set 1,526.
-- Baseline 99.4% / DistilBERT 99.3% accuracy; 13 / 15 missed scams; 9 / 11 false alarms.
-- Final system: 1.4% of scams rated Low, 0.3% of genuine emails rated High (test set).
-- Modern scam examples rated Low: 5 of 13 before the rules, 0 of 13 after.
+- Baseline 99.4% / DistilBERT (current model) 99.4% accuracy; 13 / 14 missed scams; 9 / 8 false alarms.
+- Final system: 1.4% of scams rated Low (13 of 956), 0.2% of genuine emails rated High (7 of 2,859) (test set).
+- Modern scam examples rated Low: 3 of 13 before the rules, 0 of 13 after (current model); 0 of 13 after with the first run and the baseline too.
+- Two DistilBERT runs on identical data: within a few emails on the test set, but up to 0.8 apart on single modern emails.
 - Genuine bank and government emails with their real sender: High → Medium; cost: 16 forged-brand scams (0.3%) High → Medium.
 - Lookalike check: 96% of unseen-brand fakes caught, 0 of 31 official domains flagged, 0.5% false alarms (a trained classifier: 77%, 8/31, 74%).
 - 18 genuine scams found in 55,776 rows of the teammate's spam dataset.
